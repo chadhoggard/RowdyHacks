@@ -9,7 +9,7 @@ interface Ranch {
   id: string;
   name: string;
   balance: number;
-  members: number;
+  members: string[];
 }
 
 export default function HomeScreen() {
@@ -17,15 +17,15 @@ export default function HomeScreen() {
 
   // Mock ranch data
   const ranches: Ranch[] = [
-    { id: '1', name: 'Area 51 Ranch', balance: 5000, members: 3 },
-    { id: '2', name: 'Rodeo Investors', balance: 10000, members: 5 },
-    { id: '3', name: 'Cosmic Corral', balance: 7500, members: 2 },
+    { id: '1', name: 'Area 51 Ranch', balance: 5000, members: ['Alice', 'Bob', 'Charlie'] },
+    { id: '2', name: 'Rodeo Investors', balance: 10000, members: ['Dave', 'Eve', 'Frank', 'Grace', 'Heidi'] },
+    { id: '3', name: 'Cosmic Corral', balance: 7500, members: ['Ivan', 'Judy'] },
   ];
 
   const handlePressRanch = (ranch: Ranch) => {
     router.push({
       pathname: '/ranch', 
-      params: { id: ranch.id, name: ranch.name, balance: ranch.balance, members: ranch.members }
+      params: { id: ranch.id, name: ranch.name, balance: ranch.balance, members: ranch.members.join(',') }
     });
   };
 
@@ -60,7 +60,7 @@ export default function HomeScreen() {
             <TouchableOpacity style={styles.ranchCard} onPress={() => handlePressRanch(item)}>
               <ThemedText type="subtitle">{item.name}</ThemedText>
               <ThemedText>Balance: ${item.balance.toLocaleString()}</ThemedText>
-              <ThemedText>Members: {item.members}</ThemedText>
+              <ThemedText>Members: {Array.isArray(item.members) ? item.members.length : item.members}</ThemedText>
             </TouchableOpacity>
           )}
         />
