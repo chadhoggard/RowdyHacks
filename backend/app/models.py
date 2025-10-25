@@ -76,3 +76,19 @@ class VoteResponse(BaseModel):
     approveCount: int
     rejectCount: int
     totalMembers: int
+
+
+# ============== INVITE MODELS ==============
+
+class InviteCreate(BaseModel):
+    groupId: str
+    inviteeEmail: EmailStr
+
+
+class InviteResponse(BaseModel):
+    inviteID: str
+    groupID: str
+    inviterID: str
+    inviteeEmail: str
+    status: str  # pending, accepted, declined
+    createdAt: str
