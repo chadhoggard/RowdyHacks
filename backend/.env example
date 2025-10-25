@@ -1,0 +1,19 @@
+# AWS Credentials (DO NOT COMMIT - Add your credentials here locally)
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=us-east-1
+
+# Database Configuration
+# Leave empty or comment out to use real AWS DynamoDB
+# DYNAMODB_ENDPOINT=http://localhost:8000
+
+# Table Names
+USERS_TABLE=Users
+GROUPS_TABLE=Groups
+TRANSACTIONS_TABLE=Transactions
+
+# Authentication
+JWT_SECRET=change-this-to-a-random-secret-for-production
+
+# User Table
+USER_PK_ATTR=userID
