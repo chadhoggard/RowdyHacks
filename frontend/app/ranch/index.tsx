@@ -1,11 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useLocalSearchParams } from 'expo-router';
-import React from 'react';
-import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, Button, FlatList, Modal, StyleSheet, TextInput, View } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
 
-// Helper function to create arcs
+// Helper function for pie chart arcs
 const createArcPath = (cx: number, cy: number, r: number, startAngle: number, endAngle: number) => {
   const startX = cx + r * Math.cos(startAngle);
   const startY = cy + r * Math.sin(startAngle);
@@ -24,9 +24,9 @@ export default function RanchScreen() {
   }>();
 
   const ranchBalance = Number(balance);
-  const memberList = members ? members.split(',') : [];
+  const memberList = members ? members.split(',') : ['No members yet'];
 
-  // Placeholder investment breakdown
+  // Pie chart placeholder data
   const investments = [
     { key: 'Liquid', value: ranchBalance * 0.3, color: '#FBBF24' },
     { key: 'CD', value: ranchBalance * 0.4, color: '#10B981' },
@@ -36,8 +36,20 @@ export default function RanchScreen() {
 
   let startAngle = 0;
 
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
+  const [inviteUsername, setInviteUsername] = useState('');
+
+  const handleInvest = () => Alert.alert(`Invest in ${name}`);
+  const handleWithdraw = () => Alert.alert(`Withdraw from ${name}`);
+  const handleDelete = () => Alert.alert('Delete Ranch', `Are you sure you want to delete ${name}?`);
+  const handleInvite = () => {
+    Alert.alert('Invite Sent', `You invited ${inviteUsername} to ${name}`);
+    setInviteUsername('');
+    setInviteModalVisible(false);
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <ThemedView style={styles.container}>
       {/* Header */}
       <ThemedView style={styles.header}>
         <ThemedText type="title" style={styles.headerText}>
@@ -48,7 +60,7 @@ export default function RanchScreen() {
 
       {/* Pie Chart */}
       <ThemedView style={styles.section}>
-        <ThemedText type="subtitle">Ranch Pool Breakdown</ThemedText>
+        <ThemedText type="subtitle">Ranch Balance Breakdown</ThemedText>
         <Svg width={250} height={250} viewBox="0 0 250 250" style={{ alignSelf: 'center' }}>
           <G rotation="-90" origin="125,125">
             {investments.map((inv) => {
@@ -59,12 +71,11 @@ export default function RanchScreen() {
             })}
           </G>
         </Svg>
-
         <View style={styles.legend}>
           {investments.map((inv) => (
             <View key={inv.key} style={styles.legendItem}>
               <View style={[styles.legendColor, { backgroundColor: inv.color }]} />
-              <Text style={{ color: '#E5E7EB' }}>{inv.key}</Text>
+              <ThemedText>{inv.key}</ThemedText>
             </View>
           ))}
         </View>
@@ -73,27 +84,48 @@ export default function RanchScreen() {
       {/* Members */}
       <ThemedView style={styles.section}>
         <ThemedText type="subtitle">Members ({memberList.length})</ThemedText>
-        {memberList.length > 0 ? (
-          memberList.map((member, idx) => (
-            <View key={idx} style={styles.memberRow}>
-              <Text style={styles.memberIcon}>🤠</Text>
-              <Text style={styles.memberName}>{member}</Text>
-            </View>
-          ))
-        ) : (
-          <Text style={styles.memberName}>No members yet</Text>
-        )}
+        <FlatList
+          data={memberList}
+          keyExtractor={(item, idx) => idx.toString()}
+          renderItem={({ item }) => <ThemedText>👨‍🚀 {item}</ThemedText>}
+        />
       </ThemedView>
 
       {/* Actions */}
       <ThemedView style={styles.section}>
         <View style={styles.buttonRow}>
-          <Button title="Invest" onPress={() => alert(`Invest in ${name}`)} color="#FBBF24" />
-          <Button title="Withdraw" onPress={() => alert(`Withdraw from ${name}`)} color="#10B981" />
-          <Button title="Delete Ranch" onPress={() => alert(`Delete ${name}?`)} color="#EF4444" />
+          <Button title="Invest" onPress={handleInvest} color="#FBBF24" />
+          <Button title="Withdraw" onPress={handleWithdraw} color="#10B981" />
+          <Button title="Invite" onPress={() => setInviteModalVisible(true)} color="#3B82F6" />
+          <Button title="Delete Ranch" onPress={handleDelete} color="#EF4444" />
         </View>
       </ThemedView>
-    </ScrollView>
+
+      {/* Invite Modal */}
+      <Modal
+        transparent
+        animationType="slide"
+        visible={inviteModalVisible}
+        onRequestClose={() => setInviteModalVisible(false)}
+      >
+        <ThemedView style={styles.modalBackground}>
+          <ThemedView style={styles.modalContent}>
+            <ThemedText type="subtitle">Invite Cowboy to Ranch</ThemedText>
+            <TextInput
+              style={styles.input}
+              placeholder="Username"
+              placeholderTextColor="#9CA3AF"
+              value={inviteUsername}
+              onChangeText={setInviteUsername}
+            />
+            <View style={styles.modalButtons}>
+              <Button title="Cancel" onPress={() => setInviteModalVisible(false)} color="#EF4444" />
+              <Button title="Send Invite" onPress={handleInvite} color="#3B82F6" />
+            </View>
+          </ThemedView>
+        </ThemedView>
+      </Modal>
+    </ThemedView>
   );
 }
 
@@ -102,11 +134,13 @@ const styles = StyleSheet.create({
   header: { marginBottom: 16, alignItems: 'center' },
   headerText: { fontSize: 28, color: '#FBBF24', textAlign: 'center' },
   section: { marginBottom: 24, padding: 16, borderRadius: 12, backgroundColor: '#1B1F3B' },
-  buttonRow: { flexDirection: 'row', justifyContent: 'space-around', gap: 8 },
-  memberRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 4 },
-  memberIcon: { marginRight: 8 },
-  memberName: { color: '#E5E7EB', fontSize: 16 },
+  buttonRow: { flexDirection: 'row', justifyContent: 'space-around', gap: 8, flexWrap: 'wrap' },
+  memberItem: { marginVertical: 4, color: '#E5E7EB' },
   legend: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
   legendItem: { flexDirection: 'row', alignItems: 'center', marginRight: 16, marginBottom: 8 },
   legendColor: { width: 16, height: 16, borderRadius: 4, marginRight: 6 },
+  modalBackground: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000000aa' },
+  modalContent: { width: 300, padding: 20, backgroundColor: '#1B1F3B', borderRadius: 12 },
+  input: { borderWidth: 1, borderColor: '#374151', borderRadius: 8, padding: 8, marginTop: 12, marginBottom: 12, color: '#fff' },
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
 });
