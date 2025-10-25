@@ -4,14 +4,14 @@
 # Set working directory
 cd "$(dirname "$0")"
 
-# Export AWS credentials (don't use DYNAMODB_ENDPOINT for real AWS)
-export AWS_ACCESS_KEY_ID=your_key_here
-export AWS_SECRET_ACCESS_KEY=your_secret_here
-export AWS_REGION=us-east-1
+# Load environment variables from .env file
+export $(grep -v '^#' .env | grep -v '^$' | xargs)
+
+# Set Python path
 export PYTHONPATH=/home/cheeseburger/RowdyHacks/backend
 
-# Unset DYNAMODB_ENDPOINT to use real AWS
-unset DYNAMODB_ENDPOINT
+# Unset DYNAMODB_ENDPOINT to use real AWS (or keep it for local DynamoDB)
+# unset DYNAMODB_ENDPOINT
 
 echo "🚀 Starting TrustVault Backend..."
 echo "📍 Running on: http://localhost:8080"
