@@ -621,4 +621,4 @@ console.log('Response:', response);
 
 ---
 
-**Built for RowdyHacks 2025** 🤠👽
+\
