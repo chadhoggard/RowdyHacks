@@ -4,6 +4,7 @@ CRUD functions for Transactions table
 """
 import datetime
 import uuid
+from decimal import Decimal
 from boto3.dynamodb.conditions import Key
 from .connection import transactions_table
 
@@ -26,7 +27,7 @@ def create_transaction(group_id: str, user_id: str, amount: float, description: 
     item = {
         "transactionID": transaction_id,
         "groupID": group_id,
-        "amount": float(amount),
+        "amount": Decimal(str(amount)),
         "description": description,
         "proposedBy": user_id,
         "status": "pending",

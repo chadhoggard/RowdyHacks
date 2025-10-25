@@ -15,6 +15,7 @@ AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 USERS_TABLE = os.getenv("USERS_TABLE", "Users")
 GROUPS_TABLE = os.getenv("GROUPS_TABLE", "Groups")
 TRANSACTIONS_TABLE = os.getenv("TRANSACTIONS_TABLE", "Transactions")
+INVITES_TABLE = os.getenv("INVITES_TABLE", "Invites")
 
 # User Table Attributes
 USER_PK_ATTR = os.getenv("USER_PK_ATTR", "userId")

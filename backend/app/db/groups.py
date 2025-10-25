@@ -4,6 +4,7 @@ CRUD functions for Groups table
 """
 import datetime
 import uuid
+from decimal import Decimal
 from .connection import groups_table
 
 
@@ -26,7 +27,7 @@ def create_group(owner_id: str, name: str) -> dict:
         "members": [owner_id],
         "createdBy": owner_id,
         "createdAt": datetime.datetime.utcnow().isoformat(),
-        "balance": 0.0,
+        "balance": Decimal('0'),
         "status": "active"
     }
     
@@ -42,11 +43,16 @@ def get_group(group_id: str) -> dict:
 
 def add_member(group_id: str, user_id: str):
     """Add a member to the group"""
-    groups_table.update_item(
-        Key={"groupID": group_id},
-        UpdateExpression="SET members = list_append(members, :new_member)",
-        ExpressionAttributeValues={":new_member": [user_id]}
-    )
+    try:
+        groups_table.update_item(
+            Key={"groupID": group_id},
+            UpdateExpression="SET members = list_append(members, :new_member)",
+            ExpressionAttributeValues={":new_member": [user_id]}
+        )
+        return True
+    except Exception as e:
+        print(f"Error adding member: {e}")
+        return False
 
 
 def remove_member(group_id: str, user_id: str):
@@ -88,7 +94,7 @@ def update_balance(group_id: str, amount: float):
     groups_table.update_item(
         Key={"groupID": group_id},
         UpdateExpression="SET balance = balance + :amount",
-        ExpressionAttributeValues={":amount": amount}
+        ExpressionAttributeValues={":amount": Decimal(str(amount))}
     )
 
 

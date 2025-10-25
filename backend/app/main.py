@@ -4,7 +4,7 @@ Joint investment platform for underserved communities
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import auth_routes, group_routes, transaction_routes
+from .routes import auth_routes, group_routes, transaction_routes, invite_routes
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -26,6 +26,7 @@ app.add_middleware(
 app.include_router(auth_routes.router)
 app.include_router(group_routes.router)
 app.include_router(transaction_routes.router)
+app.include_router(invite_routes.router)
 
 
 @app.get("/health")
