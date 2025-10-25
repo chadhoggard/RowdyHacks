@@ -6,8 +6,8 @@ import hashlib
 import datetime
 import uuid
 from boto3.dynamodb.conditions import Key
-from db.connection import users_table
-from config import USER_PK_ATTR
+from .connection import users_table
+from ..config import USER_PK_ATTR
 
 
 def create_user(username: str, email: str, password: str) -> dict:
