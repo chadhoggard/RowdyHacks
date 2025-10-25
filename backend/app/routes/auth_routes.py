@@ -5,9 +5,9 @@ Handles user signup and login
 import jwt
 import datetime
 from fastapi import APIRouter, HTTPException
-from app.models import SignupRequest, LoginRequest, AuthResponse
-from app.config import JWT_SECRET, JWT_ALGORITHM
-from app.db import users
+from models import SignupRequest, LoginRequest, AuthResponse
+from config import JWT_SECRET, JWT_ALGORITHM
+from db import users
 
 router = APIRouter(tags=["Authentication"])
 

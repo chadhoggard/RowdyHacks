@@ -4,7 +4,7 @@ Joint investment platform for underserved communities
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import auth_routes, group_routes, transaction_routes
+from routes import auth_routes, group_routes, transaction_routes
 
 # Initialize FastAPI app
 app = FastAPI(

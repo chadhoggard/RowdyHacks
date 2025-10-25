@@ -4,9 +4,9 @@ Handles group creation, membership, and management
 """
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
-from app.models import GroupCreate, GroupResponse, AddMemberRequest
-from app.auth import verify_token
-from app.db import groups, users
+from models import GroupCreate, GroupResponse, AddMemberRequest
+from auth import verify_token
+from db import groups, users
 
 router = APIRouter(prefix="/groups", tags=["Groups"])
 

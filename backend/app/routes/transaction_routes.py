@@ -3,9 +3,9 @@ Transaction routes
 Handles transaction proposals and voting
 """
 from fastapi import APIRouter, HTTPException, Depends, Query
-from app.models import TransactionCreate, TransactionVote, VoteResponse
-from app.auth import verify_token
-from app.db import transactions, groups
+from models import TransactionCreate, TransactionVote, VoteResponse
+from auth import verify_token
+from db import transactions, groups
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 

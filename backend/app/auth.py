@@ -5,7 +5,7 @@ Handles JWT token validation and user authorization
 import jwt
 from fastapi import HTTPException, Header
 from typing import Optional
-from app.config import JWT_SECRET, JWT_ALGORITHM
+from config import JWT_SECRET, JWT_ALGORITHM
 
 
 def verify_token(authorization: Optional[str] = Header(None)) -> dict:

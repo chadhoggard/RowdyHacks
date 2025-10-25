@@ -3,7 +3,7 @@ Database connection setup
 Initializes DynamoDB resource for the application
 """
 import boto3
-from app.config import AWS_REGION, DYNAMODB_ENDPOINT, USERS_TABLE, GROUPS_TABLE, TRANSACTIONS_TABLE
+from config import AWS_REGION, DYNAMODB_ENDPOINT, USERS_TABLE, GROUPS_TABLE, TRANSACTIONS_TABLE
 
 
 # Initialize DynamoDB resource

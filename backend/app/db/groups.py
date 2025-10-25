@@ -4,7 +4,7 @@ CRUD functions for Groups table
 """
 import datetime
 import uuid
-from app.db.connection import groups_table
+from db.connection import groups_table
 
 
 def create_group(owner_id: str, name: str) -> dict:
