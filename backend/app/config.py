@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Database Configuration
-DYNAMODB_ENDPOINT = os.getenv("DYNAMODB_ENDPOINT", "http://dynamodb:8000")
+DYNAMODB_ENDPOINT = os.getenv("DYNAMODB_ENDPOINT", None)  # None = use real AWS
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 
 # Table Names
@@ -17,7 +17,7 @@ GROUPS_TABLE = os.getenv("GROUPS_TABLE", "Groups")
 TRANSACTIONS_TABLE = os.getenv("TRANSACTIONS_TABLE", "Transactions")
 
 # User Table Attributes
-USER_PK_ATTR = os.getenv("USER_PK_ATTR", "userID")
+USER_PK_ATTR = os.getenv("USER_PK_ATTR", "userId")
 
 # Authentication
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-in-prod")

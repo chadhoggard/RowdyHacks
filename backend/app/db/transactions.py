@@ -5,7 +5,7 @@ CRUD functions for Transactions table
 import datetime
 import uuid
 from boto3.dynamodb.conditions import Key
-from db.connection import transactions_table
+from .connection import transactions_table
 
 
 def create_transaction(group_id: str, user_id: str, amount: float, description: str) -> dict:
