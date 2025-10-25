@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
-import { Button, StyleSheet } from 'react-native';
+import { Button, ImageBackground, StyleSheet } from 'react-native';
 
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+
 
 export default function HomeScreen() {
   // TODO: replace with real backend data
@@ -15,27 +16,31 @@ export default function HomeScreen() {
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
       headerImage={
-        <Image
-          source={require('@/assets/images/partial-logo.png')}
-          style={styles.logo}
-        />
+        <ImageBackground
+          source={require('@/assets/images/space-background.jpg')}
+          style={styles.headerImageBackground}
+        >
+          <Image
+            source={require('@/assets/images/partial-logo.png')}
+            style={styles.logo}
+          />
+        </ImageBackground>
       }
     >
       {/* Welcome / title */}
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">🚀 PartnerInvest 🤠</ThemedText>
-        <ThemedText type="subtitle">Shared Brokerage Pool</ThemedText>
+        <ThemedText type="subtitle">Yeehaw! Partner Up and Invest Together!</ThemedText>
       </ThemedView>
 
       {/* Shared pool balance */}
       <ThemedView style={styles.sectionContainer}>
-        <ThemedText type="subtitle">Shared Pool Balance</ThemedText>
+        <ThemedText type="subtitle">TOTAL BALANCE</ThemedText>
         <ThemedText style={styles.balance}>${sharedPoolBalance.toLocaleString()}</ThemedText>
       </ThemedView>
 
       {/* Invest / Withdraw actions */}
       <ThemedView style={styles.sectionContainer}>
-        <ThemedText type="subtitle">Actions</ThemedText>
         <ThemedView style={styles.buttonRow}>
           <Button title="Invest" onPress={handleInvest} color="#f59e0b" />
           <Button title="Withdraw" onPress={handleWithdraw} color="#f59e0b" />
@@ -80,5 +85,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     position: 'absolute',
+  },
+  headerImageBackground: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backgroundImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
 });
