@@ -2,8 +2,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Button, FlatList, Modal, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Button, FlatList, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
+
 
 // Helper function for pie chart arcs
 const createArcPath = (cx: number, cy: number, r: number, startAngle: number, endAngle: number) => {
@@ -92,14 +93,25 @@ export default function RanchScreen() {
       </ThemedView>
 
       {/* Actions */}
-      <ThemedView style={styles.section}>
+        <ThemedView style={styles.section}>
         <View style={styles.buttonRow}>
-          <Button title="Invest" onPress={handleInvest} color="#FBBF24" />
-          <Button title="Withdraw" onPress={handleWithdraw} color="#10B981" />
-          <Button title="Invite" onPress={() => setInviteModalVisible(true)} color="#3B82F6" />
-          <Button title="Delete Ranch" onPress={handleDelete} color="#EF4444" />
+            {[
+            { label: 'Invest', color: '#FBBF24', onPress: handleInvest },
+            { label: 'Withdraw', color: '#10B981', onPress: handleWithdraw },
+            { label: 'Invite', color: '#3B82F6', onPress: () => setInviteModalVisible(true) },
+            { label: 'Delete Ranch', color: '#EF4444', onPress: handleDelete },
+            ].map((btn) => (
+            <TouchableOpacity
+                key={btn.label}
+                style={[styles.actionButton, { backgroundColor: btn.color }]}
+                onPress={btn.onPress}
+                activeOpacity={0.7}
+            >
+                <ThemedText style={styles.buttonText}>{btn.label}</ThemedText>
+            </TouchableOpacity>
+            ))}
         </View>
-      </ThemedView>
+        </ThemedView>
 
       {/* Invite Modal */}
       <Modal
@@ -134,7 +146,6 @@ const styles = StyleSheet.create({
   header: { marginBottom: 16, alignItems: 'center' },
   headerText: { fontSize: 28, color: '#FBBF24', textAlign: 'center' },
   section: { marginBottom: 24, padding: 16, borderRadius: 12, backgroundColor: '#1B1F3B' },
-  buttonRow: { flexDirection: 'row', justifyContent: 'space-around', gap: 8, flexWrap: 'wrap' },
   memberItem: { marginVertical: 4, color: '#E5E7EB' },
   legend: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
   legendItem: { flexDirection: 'row', alignItems: 'center', marginRight: 16, marginBottom: 8 },
@@ -143,4 +154,24 @@ const styles = StyleSheet.create({
   modalContent: { width: 300, padding: 20, backgroundColor: '#1B1F3B', borderRadius: 12 },
   input: { borderWidth: 1, borderColor: '#374151', borderRadius: 8, padding: 8, marginTop: 12, marginBottom: 12, color: '#fff' },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+  buttonRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  gap: 12,
+    },
+    actionButton: {
+    flex: 1,
+    paddingVertical: 14,
+    marginVertical: 6,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '45%', // ensures two buttons per row on small screens
+    },
+    buttonText: {
+    color: '#0B1120',
+    fontWeight: 'bold',
+    fontSize: 16,
+    },
 });
