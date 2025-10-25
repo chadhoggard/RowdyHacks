@@ -20,7 +20,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Ranch',
           tabBarIcon: ({ color, size}) => <MaterialCommunityIcons name="rocket" size={size} color={color} />,
         }}
       />

@@ -1,20 +1,37 @@
-import { Image } from 'expo-image';
-import { Button, ImageBackground, StyleSheet } from 'react-native';
-
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { FlatList, Image, ImageBackground, StyleSheet, TouchableOpacity } from 'react-native';
 
+interface Ranch {
+  id: string;
+  name: string;
+  balance: number;
+  members: number;
+}
 
 export default function HomeScreen() {
-  // TODO: replace with real backend data
-  const sharedPoolBalance = 12500; // placeholder balance
-  const handleInvest = () => alert('Invest button pressed');
-  const handleWithdraw = () => alert('Withdraw button pressed');
+  const router = useRouter();
+
+  // Mock ranch data
+  const ranches: Ranch[] = [
+    { id: '1', name: 'Area 51 Ranch', balance: 5000, members: 3 },
+    { id: '2', name: 'Rodeo Investors', balance: 10000, members: 5 },
+    { id: '3', name: 'Cosmic Corral', balance: 7500, members: 2 },
+  ];
+
+  const handlePressRanch = (ranch: Ranch) => {
+    router.push({
+      pathname: '/ranch', 
+      params: { id: ranch.id, name: ranch.name, balance: ranch.balance, members: ranch.members }
+    });
+  };
 
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+      headerBackgroundColor={{ light: '#0B0C1F', dark: '#0B0C1F' }}
       headerImage={
         <ImageBackground
           source={require('@/assets/images/space-background.jpg')}
@@ -27,31 +44,33 @@ export default function HomeScreen() {
         </ImageBackground>
       }
     >
-      {/* Welcome / title */}
+      {/* Welcome title */}
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">🚀 PartnerInvest 🤠</ThemedText>
         <ThemedText type="subtitle">Yeehaw! Partner Up and Invest Together!</ThemedText>
       </ThemedView>
 
-      {/* Shared pool balance */}
+      {/* Ranches list */}
       <ThemedView style={styles.sectionContainer}>
-        <ThemedText type="subtitle">TOTAL BALANCE</ThemedText>
-        <ThemedText style={styles.balance}>${sharedPoolBalance.toLocaleString()}</ThemedText>
+        <ThemedText type="subtitle">YOUR RANCHES</ThemedText>
+        <FlatList
+          data={ranches}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity style={styles.ranchCard} onPress={() => handlePressRanch(item)}>
+              <ThemedText type="subtitle">{item.name}</ThemedText>
+              <ThemedText>Balance: ${item.balance.toLocaleString()}</ThemedText>
+              <ThemedText>Members: {item.members}</ThemedText>
+            </TouchableOpacity>
+          )}
+        />
       </ThemedView>
 
-      {/* Invest / Withdraw actions */}
-      <ThemedView style={styles.sectionContainer}>
-        <ThemedView style={styles.buttonRow}>
-          <Button title="Invest" onPress={handleInvest} color="#f59e0b" />
-          <Button title="Withdraw" onPress={handleWithdraw} color="#f59e0b" />
-        </ThemedView>
-      </ThemedView>
-
-      {/* Info / guidance */}
+      {/* Tip / guidance */}
       <ThemedView style={styles.sectionContainer}>
         <ThemedText type="subtitle">Tip</ThemedText>
         <ThemedText>
-          Track the pool balance and make sure your investments stay within your risk preference.
+          Tap a ranch to view details and manage investments.
         </ThemedText>
       </ThemedView>
     </ParallaxScrollView>
@@ -66,18 +85,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionContainer: {
-    gap: 8,
+    gap: 12,
     marginBottom: 16,
   },
-  balance: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#f59e0b',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
+  ranchCard: {
+    padding: 16,
+    marginBottom: 12,
+    backgroundColor: '#1D1F33',
+    borderRadius: 12,
   },
   logo: {
     height: 178,
@@ -92,10 +107,5 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  backgroundImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
   },
 });
