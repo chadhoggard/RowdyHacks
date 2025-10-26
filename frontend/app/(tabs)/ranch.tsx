@@ -1,14 +1,6 @@
+import { StockTradingModal } from "@/components/StockTradingModal";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import {
-  BalanceSection,
-  RanchPieChart,
-  ProposalCard,
-  LedgerSection,
-  MembersSection,
-  ActionButtonsSection,
-} from "@/components/ranch";
-import { StockTradingModal } from "@/components/StockTradingModal";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import React, { useCallback, useEffect, useState } from "react";
