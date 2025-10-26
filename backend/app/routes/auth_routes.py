@@ -9,7 +9,7 @@ from ..models import SignupRequest, LoginRequest, AuthResponse
 from ..config import JWT_SECRET, JWT_ALGORITHM
 from ..db import users
 
-router = APIRouter(tags=["Authentication"])
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/signup", response_model=AuthResponse)
