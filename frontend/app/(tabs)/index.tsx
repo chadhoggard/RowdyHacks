@@ -11,7 +11,6 @@ import {
   ImageBackground,
   Modal,
   Platform,
-  ScrollView,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -41,6 +40,14 @@ interface Ranch {
   liquidBalance: number;
   investedAmount: number;
   members: string[];
+  pendingApprovals?: number; // NEW: Track pending approvals
+}
+
+interface Contribution {
+  ranchId: string;
+  ranchName: string;
+  amount: number;
+  date: string;
 }
 
 const getMockReturn = (balance: number) => {
@@ -55,6 +62,7 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
 
   const [ranches, setRanches] = useState<Ranch[]>([]);
+  const [contributions, setContributions] = useState<Contribution[]>([]);
   const [addRanchModalVisible, setAddRanchModalVisible] = useState(false);
   const [newRanchName, setNewRanchName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -65,6 +73,33 @@ export default function HomeScreen() {
   const breakpoint1200 = 1200;
   const numColumns =
     width >= breakpoint1200 ? 3 : width >= breakpoint768 ? 2 : 1;
+
+  // Fetch pending approvals for a ranch
+  const fetchPendingApprovals = async (ranchId: string, token: string) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/transactions?groupId=${ranchId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        // Count transactions with status "pending"
+        const pendingCount = data.transactions?.filter(
+          (tx: any) => tx.status === "pending"
+        ).length || 0;
+        return pendingCount;
+      }
+      return 0;
+    } catch (error) {
+      console.error("Error fetching pending approvals:", error);
+      return 0;
+    }
+  };
 
   // Fetch user's ranches from backend
   const fetchRanches = async () => {
@@ -91,22 +126,57 @@ export default function HomeScreen() {
         console.log("📦 User data:", data);
 
         if (data.groups && data.groups.length > 0) {
-          const userRanches: Ranch[] = data.groups.map((group: any) => ({
-            id: group.groupID,
-            name: group.name,
-            liquidBalance: group.balance || 0,
-            investedAmount: group.investedAmount || 0,
-            balance:
-              group.totalAssets ||
-              group.balance + (group.investedAmount || 0) ||
-              0,
-            members: group.members || [],
-          }));
+          // Fetch pending approvals for each ranch
+          const userRanches: Ranch[] = await Promise.all(
+            data.groups.map(async (group: any) => {
+              const pendingApprovals = await fetchPendingApprovals(
+                group.groupID,
+                token
+              );
+              return {
+                id: group.groupID,
+                name: group.name,
+                liquidBalance: group.balance || 0,
+                investedAmount: group.investedAmount || 0,
+                balance:
+                  group.totalAssets ||
+                  group.balance + (group.investedAmount || 0) ||
+                  0,
+                members: group.members || [],
+                pendingApprovals,
+              };
+            })
+          );
+
           console.log("✅ Loaded ranches:", userRanches);
           setRanches(userRanches);
+
+          // Mock contributions based on ranches (replace with real API)
+          const mockContributions: Contribution[] = userRanches.flatMap(
+            (ranch) => [
+              {
+                ranchId: ranch.id,
+                ranchName: ranch.name,
+                amount: Math.round(ranch.liquidBalance * 0.3),
+                date: new Date(
+                  Date.now() - 5 * 24 * 60 * 60 * 1000
+                ).toISOString(),
+              },
+              {
+                ranchId: ranch.id,
+                ranchName: ranch.name,
+                amount: Math.round(ranch.liquidBalance * 0.2),
+                date: new Date(
+                  Date.now() - 15 * 24 * 60 * 60 * 1000
+                ).toISOString(),
+              },
+            ]
+          );
+          setContributions(mockContributions);
         } else {
           console.log("📭 No ranches found");
           setRanches([]);
+          setContributions([]);
         }
       } else {
         console.error("❌ Failed to fetch ranches:", response.status);
@@ -183,6 +253,7 @@ export default function HomeScreen() {
           liquidBalance: data.balance || 0,
           investedAmount: data.investedAmount || 0,
           members: data.members || [userId],
+          pendingApprovals: 0,
         };
 
         setRanches((prev) => [newRanch, ...prev]);
@@ -202,10 +273,37 @@ export default function HomeScreen() {
     }
   };
 
+  // Calculate contribution growth
+  const calculateContributionGrowth = () => {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const recentContributions = contributions.filter(
+      (c) => new Date(c.date) >= thirtyDaysAgo
+    );
+
+    const totalRecent = recentContributions.reduce(
+      (sum, c) => sum + c.amount,
+      0
+    );
+    const totalAll = contributions.reduce((sum, c) => sum + c.amount, 0);
+
+    return {
+      total: totalAll,
+      lastMonth: totalRecent,
+      percentChange:
+        totalAll > 0 ? ((totalRecent / totalAll) * 100).toFixed(1) : "0",
+    };
+  };
+
   // Calculate totals
   const totalValue = ranches.reduce((sum, r) => sum + r.balance, 0);
   const totalLiquid = ranches.reduce((sum, r) => sum + r.liquidBalance, 0);
   const totalInvested = ranches.reduce((sum, r) => sum + r.investedAmount, 0);
+  const totalPendingApprovals = ranches.reduce(
+    (sum, r) => sum + (r.pendingApprovals || 0),
+    0
+  );
 
   return (
     <>
@@ -230,6 +328,45 @@ export default function HomeScreen() {
             Yeehaw! Partner Up and Invest Together!
           </ThemedText>
         </ThemedView>
+
+        {/* NOTIFICATIONS BANNER */}
+        {totalPendingApprovals > 0 && (
+          <TouchableOpacity
+            style={styles.notificationBanner}
+            onPress={() => {
+              const ranchesWithApprovals = ranches.filter(
+                (r) => (r.pendingApprovals || 0) > 0
+              );
+              if (ranchesWithApprovals.length === 1) {
+                handlePressRanch(ranchesWithApprovals[0]);
+              } else {
+                Alert.alert(
+                  "Pending Approvals",
+                  `You have ${totalPendingApprovals} transaction${
+                    totalPendingApprovals > 1 ? "s" : ""
+                  } waiting for your vote across ${
+                    ranchesWithApprovals.length
+                  } ranch${ranchesWithApprovals.length > 1 ? "es" : ""}.`
+                );
+              }
+            }}
+          >
+            <View style={styles.notificationContent}>
+              <ThemedText style={styles.notificationIcon}>🔔</ThemedText>
+              <View style={styles.notificationTextContainer}>
+                <ThemedText style={styles.notificationTitle}>
+                  Action Required!
+                </ThemedText>
+                <ThemedText style={styles.notificationText}>
+                  {totalPendingApprovals} transaction
+                  {totalPendingApprovals > 1 ? "s" : ""} waiting for your
+                  approval
+                </ThemedText>
+              </View>
+            </View>
+            <ThemedText style={styles.notificationArrow}>→</ThemedText>
+          </TouchableOpacity>
+        )}
 
         {/* PORTFOLIO SUMMARY */}
         {ranches.length > 0 && (
@@ -268,6 +405,104 @@ export default function HomeScreen() {
           </ThemedView>
         )}
 
+        {/* CONTRIBUTIONS & GROWTH */}
+        {ranches.length > 0 && contributions.length > 0 && (
+          <ThemedView style={styles.contributionsCard}>
+            <View style={styles.contributionsHeader}>
+              <ThemedText type="subtitle" style={styles.contributionsTitle}>
+                📈 Your Contributions & Growth
+              </ThemedText>
+              <TouchableOpacity
+                style={styles.viewAllBtn}
+                onPress={() =>
+                  Alert.alert("Coming Soon", "View all contributions history")
+                }
+              >
+                <ThemedText style={styles.viewAllText}>View All →</ThemedText>
+              </TouchableOpacity>
+            </View>
+
+            {/* Growth Stats */}
+            <View style={styles.growthStats}>
+              <View style={styles.growthStatItem}>
+                <ThemedText style={styles.growthLabel}>
+                  Total Contributed
+                </ThemedText>
+                <ThemedText style={styles.growthValue}>
+                  ${calculateContributionGrowth().total.toLocaleString()}
+                </ThemedText>
+              </View>
+              <View style={styles.growthStatItem}>
+                <ThemedText style={styles.growthLabel}>Last 30 Days</ThemedText>
+                <ThemedText style={[styles.growthValue, styles.growthPositive]}>
+                  +$
+                  {calculateContributionGrowth().lastMonth.toLocaleString()}
+                </ThemedText>
+              </View>
+              <View style={styles.growthStatItem}>
+                <ThemedText style={styles.growthLabel}>Growth Rate</ThemedText>
+                <ThemedText style={[styles.growthValue, styles.growthPositive]}>
+                  +{calculateContributionGrowth().percentChange}%
+                </ThemedText>
+              </View>
+            </View>
+
+            {/* Recent Contributions */}
+            <View style={styles.recentContributions}>
+              <ThemedText style={styles.recentTitle}>
+                Recent Activity
+              </ThemedText>
+              {contributions
+                .sort(
+                  (a, b) =>
+                    new Date(b.date).getTime() - new Date(a.date).getTime()
+                )
+                .slice(0, 5)
+                .map((contribution, index) => (
+                  <View key={index} style={styles.contributionItem}>
+                    <View style={styles.contributionLeft}>
+                      <View style={styles.contributionIcon}>
+                        <ThemedText style={styles.contributionIconText}>
+                          💰
+                        </ThemedText>
+                      </View>
+                      <View>
+                        <ThemedText style={styles.contributionRanchName}>
+                          {contribution.ranchName}
+                        </ThemedText>
+                        <ThemedText style={styles.contributionDate}>
+                          {new Date(contribution.date).toLocaleDateString(
+                            "en-US",
+                            {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            }
+                          )}
+                        </ThemedText>
+                      </View>
+                    </View>
+                    <ThemedText style={styles.contributionAmount}>
+                      +${contribution.amount.toLocaleString()}
+                    </ThemedText>
+                  </View>
+                ))}
+            </View>
+
+            {/* Mini Chart */}
+            <View style={styles.miniChart}>
+              <ThemedText style={styles.chartTitle}>30-Day Trend</ThemedText>
+              <View style={styles.chartBars}>
+                {[40, 65, 45, 80, 60, 90, 75].map((height, i) => (
+                  <View key={i} style={styles.chartBarContainer}>
+                    <View style={[styles.chartBar, { height: `${height}%` }]} />
+                  </View>
+                ))}
+              </View>
+            </View>
+          </ThemedView>
+        )}
+
         {/* YOUR RANCHES */}
         <ThemedView style={styles.sectionContainer}>
           <ThemedText type="subtitle">YOUR RANCHES</ThemedText>
@@ -300,6 +535,15 @@ export default function HomeScreen() {
                 onPress={() => handlePressRanch(ranch)}
                 activeOpacity={0.8}
               >
+                {/* Pending Approval Badge */}
+                {ranch.pendingApprovals && ranch.pendingApprovals > 0 && (
+                  <View style={styles.approvalBadge}>
+                    <ThemedText style={styles.approvalBadgeText}>
+                      {ranch.pendingApprovals} Pending
+                    </ThemedText>
+                  </View>
+                )}
+
                 <ThemedText type="subtitle" style={styles.ranchName}>
                   {ranch.name}
                 </ThemedText>
@@ -426,6 +670,65 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Notification Banner
+  notificationBanner: {
+    backgroundColor: "#FFA500",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: "#FFA500",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  notificationContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  notificationIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  notificationTextContainer: {
+    flex: 1,
+  },
+  notificationTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#000",
+  },
+  notificationText: {
+    fontSize: 13,
+    color: "#000",
+    marginTop: 2,
+  },
+  notificationArrow: {
+    fontSize: 20,
+    color: "#000",
+    fontWeight: "bold",
+  },
+
+  // Approval Badge on Ranch Card
+  approvalBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    backgroundColor: "#DC2626",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 1,
+  },
+  approvalBadgeText: {
+    fontSize: 11,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+
   // Summary Card
   summaryCard: {
     backgroundColor: "#1B1F3B",
@@ -460,6 +763,145 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: "#FFA500",
+  },
+
+  // Contributions Card
+  contributionsCard: {
+    backgroundColor: "#1B1F3B",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#3B82F6",
+  },
+  contributionsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  contributionsTitle: {
+    marginBottom: 0,
+  },
+  viewAllBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "#374151",
+    borderRadius: 6,
+  },
+  viewAllText: {
+    fontSize: 12,
+    color: "#3B82F6",
+    fontWeight: "600",
+  },
+
+  // Growth Stats
+  growthStats: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 20,
+  },
+  growthStatItem: {
+    flex: 1,
+    backgroundColor: "#0B0C1F",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  growthLabel: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    marginBottom: 6,
+    textAlign: "center",
+  },
+  growthValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  growthPositive: {
+    color: "#32CD32",
+  },
+
+  // Recent Contributions
+  recentContributions: {
+    marginBottom: 20,
+  },
+  recentTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#9CA3AF",
+    marginBottom: 12,
+  },
+  contributionItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: "#0B0C1F",
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  contributionLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  contributionIcon: {
+    width: 36,
+    height: 36,
+    backgroundColor: "#374151",
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  contributionIconText: {
+    fontSize: 18,
+  },
+  contributionRanchName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  contributionDate: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    marginTop: 2,
+  },
+  contributionAmount: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#32CD32",
+  },
+
+  // Mini Chart
+  miniChart: {
+    backgroundColor: "#0B0C1F",
+    padding: 16,
+    borderRadius: 8,
+  },
+  chartTitle: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    marginBottom: 12,
+  },
+  chartBars: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    height: 80,
+    gap: 8,
+  },
+  chartBarContainer: {
+    flex: 1,
+    height: "100%",
+    justifyContent: "flex-end",
+  },
+  chartBar: {
+    backgroundColor: "#3B82F6",
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+    minHeight: 8,
   },
 
   // Ranches Grid
