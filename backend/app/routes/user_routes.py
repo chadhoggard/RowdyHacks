@@ -25,6 +25,7 @@ def get_current_user(token: dict = Depends(verify_token)):
     
     # Get full group details for each group ID
     group_ids = user.get("groups", [])
+    print(f"👤 User {user.get('username')} has group IDs: {group_ids}")
     user_groups = []
     for group_id in group_ids:
         group = groups.get_group(group_id)
@@ -70,6 +71,41 @@ def get_current_user(token: dict = Depends(verify_token)):
     }
     
     return user_data
+
+
+@router.get("/all")
+def get_all_users(token: dict = Depends(verify_token)):
+    """
+    Get a list of all users in the system
+    
+    Returns basic user information (username, email, userId) for all users
+    Useful for adding members to groups
+    """
+    try:
+        # Get all users from database
+        all_users = users.get_all_users()
+        
+        print(f"📊 Found {len(all_users)} users in database")
+        print(f"📋 Raw users from DB: {[{'id': u.get('userID'), 'username': u.get('username'), 'email': u.get('email')} for u in all_users]}")
+        
+        # Format user data (remove sensitive info)
+        user_list = []
+        for user in all_users:
+            user_list.append({
+                "userId": user.get("userID"),
+                "username": user.get("username"),
+                "email": user.get("email"),
+                "status": user.get("status", "active")
+            })
+        
+        print(f"✅ Returning {len(user_list)} users")
+        return {
+            "users": user_list,
+            "count": len(user_list)
+        }
+    except Exception as e:
+        print(f"❌ Error fetching users: {e}")
+        raise HTTPException(500, f"Failed to fetch users: {str(e)}")
 
 
 @router.get("/me/investments")

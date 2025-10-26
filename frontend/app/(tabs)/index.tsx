@@ -1,9 +1,9 @@
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -104,6 +104,7 @@ export default function HomeScreen() {
           console.log('✅ Loaded ranches:', userRanches);
           console.log('✅ Ranch IDs:', userRanches.map(r => r.id));
           setRanches([addButton, ...userRanches]);
+          console.log('✅ State updated with ranches:', [addButton, ...userRanches].length, 'items');
         } else {
           console.log('📭 No ranches found');
           setRanches([addButton]);
@@ -124,6 +125,13 @@ export default function HomeScreen() {
   useEffect(() => {
     fetchRanches();
   }, []);
+
+  // Refetch ranches when screen comes into focus (user navigates back)
+  useFocusEffect(
+    useCallback(() => {
+      fetchRanches();
+    }, [])
+  );
 
   const handlePressRanch = (ranch: Ranch) => {
     console.log('🖱️ Ranch clicked:', ranch);
@@ -235,6 +243,7 @@ export default function HomeScreen() {
 
         <ThemedView style={styles.sectionContainer}>
           <ThemedText type="subtitle">YOUR RANCHES</ThemedText>
+          {console.log('🎨 Rendering FlatList with', ranches.length, 'items:', ranches.map(r => ({ id: r.id, name: r.name })))}
           <FlatList
             key={numColumns}
             data={ranches}

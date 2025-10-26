@@ -85,10 +85,12 @@ export default function RanchScreen() {
     loadAuth();
   }, []);
 
-  // Fetch data when auth token is loaded
+  // Fetch data when auth token is loaded or when ranch ID changes
   useEffect(() => {
     if (authToken && id) {
-      console.log('✅ Auth token loaded, fetching data...');
+      console.log('✅ Auth token loaded for ranch:', id);
+      console.log('🧹 Clearing old proposals before fetching new ones');
+      setProposals([]); // Clear proposals when switching ranches
       fetchGroupData();
       fetchProposals();
       fetchPersonalBalance();
@@ -127,7 +129,8 @@ export default function RanchScreen() {
 
   // Modals
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
-  const [inviteUsername, setInviteUsername] = useState('');
+  const [availableUsers, setAvailableUsers] = useState<Array<{userId: string, username: string, email: string}>>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [manageMembersModalVisible, setManageMembersModalVisible] = useState(false);
   const [investModalVisible, setInvestModalVisible] = useState(false);
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
@@ -176,7 +179,7 @@ export default function RanchScreen() {
       console.log('⚠️ No auth token yet, skipping proposals fetch');
       return;
     }
-    console.log('🔍 Fetching proposals for group:', id);
+    console.log('🔍 Fetching proposals for THIS group ONLY:', id);
     try {
       const url = `${API_BASE_URL}/transactions?groupId=${id}`;
       console.log('🌐 Fetching from:', url);
@@ -189,13 +192,17 @@ export default function RanchScreen() {
       if (response.ok) {
         const data = await response.json();
         console.log('📦 Raw response data:', data);
-        console.log('📦 All transactions:', data.transactions);
-        console.log('📦 Transaction count:', data.transactions?.length || 0);
         
-        // Show ALL transactions (not just pending/approved)
-        const allTransactions = data.transactions || [];
-        console.log('✅ Setting proposals to:', allTransactions);
-        setProposals(allTransactions);
+        // Filter to only show transactions for THIS specific group
+        const thisGroupTransactions = (data.transactions || []).filter(
+          (txn: Transaction) => txn.groupID === id
+        );
+        
+        console.log(`✅ Total transactions received: ${data.transactions?.length || 0}`);
+        console.log(`✅ Transactions for THIS group (${id}): ${thisGroupTransactions.length}`);
+        console.log('✅ Setting proposals to:', thisGroupTransactions);
+        
+        setProposals(thisGroupTransactions);
       } else {
         const errorText = await response.text();
         console.log('❌ Error response:', errorText);
@@ -231,6 +238,19 @@ export default function RanchScreen() {
   const handleInvestSubmit = async () => {
     console.log('🔵 handleInvestSubmit called');
     console.log('Transaction amount:', transactionAmount);
+    
+    if (!authToken) {
+      console.error('❌ No auth token available');
+      Alert.alert('Error', 'Not authenticated. Please log in again.');
+      return;
+    }
+    
+    if (!id) {
+      console.error('❌ No group ID available');
+      Alert.alert('Error', 'Ranch ID is missing. Please try again.');
+      return;
+    }
+    
     const amount = parseFloat(transactionAmount);
     console.log('Parsed amount:', amount);
     
@@ -251,6 +271,8 @@ export default function RanchScreen() {
     }
 
     console.log('✅ Validation passed, making API call');
+    console.log('🔑 Using auth token length:', authToken?.length);
+    console.log('🏠 Group ID:', id);
     setLoading(true);
     try {
       // Create a transaction proposal (not direct deposit)
@@ -287,7 +309,7 @@ export default function RanchScreen() {
         );
       } else {
         const error = await response.json();
-        console.log('❌ Error response:', error);
+        console.error('❌ API error:', error);
         Alert.alert('Error', error.detail || 'Failed to create proposal');
       }
     } catch (error) {
@@ -402,57 +424,94 @@ export default function RanchScreen() {
     }
   };
   
+  // Fetch all available users when opening invite modal
   const handleInvite = async () => {
-    if (!inviteUsername.trim()) {
-      Alert.alert('Error', 'Please enter an email address');
-      return;
-    }
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(inviteUsername.trim())) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address');
-      return;
-    }
-
-    console.log('📧 Sending invite to:', inviteUsername);
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/invites`, {
+      // First, fetch the latest group data to get current members
+      console.log('🔄 Refreshing group data before fetching users...');
+      await fetchGroupData();
+      
+      console.log('👥 Fetching all users...');
+      const response = await fetch(`${API_BASE_URL}/users/all`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Users fetched:', data.users.length);
+        console.log('👥 All users:', data.users);
+        console.log('📋 Current memberList:', memberList);
+        console.log('👤 Current user ID:', currentUserId);
+        
+        // Filter out users who are already members
+        const nonMembers = data.users.filter((user: any) => {
+          const isAlreadyMember = memberList.includes(user.userId);
+          const isCurrentUser = user.userId === currentUserId;
+          console.log(`🔍 Checking ${user.username}: isAlreadyMember=${isAlreadyMember}, isCurrentUser=${isCurrentUser}`);
+          return !isAlreadyMember && !isCurrentUser;
+        });
+        
+        console.log('✅ Available users after filtering:', nonMembers);
+        setAvailableUsers(nonMembers);
+        setInviteModalVisible(true);
+      } else {
+        console.error('❌ Failed to fetch users');
+        Alert.alert('Error', 'Failed to load users');
+      }
+    } catch (error) {
+      console.error('❌ Network error:', error);
+      Alert.alert('Error', 'Network error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add selected user to the group
+  const handleAddMember = async () => {
+    if (!selectedUserId) {
+      Alert.alert('Error', 'Please select a user');
+      return;
+    }
+
+    console.log('➕ Adding member:', selectedUserId);
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/groups/${id}/members`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          groupId: id,
-          inviteeEmail: inviteUsername.trim(),
+          userId: selectedUserId,
         }),
       });
 
       if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Invite sent:', data);
+        console.log('✅ Member added');
+        const selectedUser = availableUsers.find(u => u.userId === selectedUserId);
         Alert.alert(
-          'Invite Sent! 📧',
-          `Successfully invited ${inviteUsername} to ${name}. They will receive the invite when they log in.`
+          'Member Added! 🎉',
+          `${selectedUser?.username} has been added to ${name}`
         );
-        setInviteUsername('');
+        setSelectedUserId('');
         setInviteModalVisible(false);
+        await fetchGroupData(); // Refresh member list
       } else {
         const error = await response.json();
-        console.log('❌ Invite error:', error);
-        if (error.detail === 'Only group owners can send invites') {
-          Alert.alert('Permission Denied', 'Only the ranch owner can send invites');
-        } else if (error.detail?.includes('already')) {
-          Alert.alert('Already Invited', `${inviteUsername} has already been invited to this ranch`);
+        console.error('❌ Add member error:', error);
+        if (error.detail === 'User is already a member') {
+          Alert.alert('Already a Member', 'This user is already in the ranch');
         } else {
-          Alert.alert('Error', error.detail || 'Failed to send invite');
+          Alert.alert('Error', error.detail || 'Failed to add member');
         }
       }
     } catch (error) {
-      console.log('❌ Network error:', error);
-      Alert.alert('Error', 'Network error occurred. Please try again.');
+      console.error('❌ Network error:', error);
+      Alert.alert('Error', 'Network error occurred');
     } finally {
       setLoading(false);
     }
@@ -587,6 +646,11 @@ export default function RanchScreen() {
               };
               const status = statusConfig[proposal.status] || statusConfig.pending;
 
+              // Debug: Log if this proposal doesn't match the current group
+              if (proposal.groupID !== id) {
+                console.warn('⚠️ MISMATCH! Proposal', proposal.transactionID, 'belongs to group', proposal.groupID, 'but showing in', id);
+              }
+
               return (
                 <ThemedView key={proposal.transactionID} style={styles.proposalCard}>
                   <View style={styles.proposalHeader}>
@@ -712,7 +776,7 @@ export default function RanchScreen() {
             { label: 'Deposit', color: '#10B981', onPress: handleDeposit },
             { label: 'Invest', color: '#FBBF24', onPress: handleInvest },
             { label: 'Withdraw', color: '#F59E0B', onPress: handleWithdraw },
-            { label: 'Invite', color: '#3B82F6', onPress: () => setInviteModalVisible(true) },
+            { label: 'Invite', color: '#3B82F6', onPress: handleInvite },
             { label: 'Manage Members', color: '#8B5CF6', onPress: () => setManageMembersModalVisible(true) },
             { label: 'Delete Ranch', color: '#EF4444', onPress: handleDelete },
           ].map((btn) => (
@@ -739,24 +803,43 @@ export default function RanchScreen() {
     >
       <ThemedView style={styles.modalBackground}>
         <ThemedView style={styles.modalContent}>
-          <ThemedText type="subtitle">📧 Invite to {name}</ThemedText>
+          <ThemedText type="subtitle">� Add Member to {name}</ThemedText>
           <ThemedText style={styles.modalSubtext}>
-            Enter the email address of the person you want to invite
+            Select a user to add to your ranch
           </ThemedText>
-          <TextInput
-            style={styles.input}
-            placeholder="user@example.com"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={inviteUsername}
-            onChangeText={setInviteUsername}
-          />
+          
+          {availableUsers.length === 0 ? (
+            <ThemedText style={styles.emptyText}>
+              {loading ? 'Loading users...' : 'No users available to add'}
+            </ThemedText>
+          ) : (
+            <ScrollView style={styles.userList}>
+              {availableUsers.map((user) => (
+                <TouchableOpacity
+                  key={user.userId}
+                  style={[
+                    styles.userItem,
+                    selectedUserId === user.userId && styles.userItemSelected
+                  ]}
+                  onPress={() => setSelectedUserId(user.userId)}
+                >
+                  <View>
+                    <ThemedText style={styles.username}>👤 {user.username}</ThemedText>
+                    <ThemedText style={styles.userEmail}>{user.email}</ThemedText>
+                  </View>
+                  {selectedUserId === user.userId && (
+                    <ThemedText style={styles.checkmark}>✓</ThemedText>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+          
           <View style={styles.modalButtons}>
             <TouchableOpacity 
               onPress={() => {
                 setInviteModalVisible(false);
-                setInviteUsername('');
+                setSelectedUserId('');
               }} 
               style={styles.modalBtnCancel}
               disabled={loading}
@@ -764,14 +847,14 @@ export default function RanchScreen() {
               <ThemedText>Cancel</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity 
-              onPress={handleInvite} 
+              onPress={handleAddMember} 
               style={[styles.modalBtnSend, loading && styles.btnDisabled]}
-              disabled={loading}
+              disabled={loading || !selectedUserId}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <ThemedText>Send Invite</ThemedText>
+                <ThemedText>Add Member</ThemedText>
               )}
             </TouchableOpacity>
           </View>
@@ -996,6 +1079,41 @@ const styles = StyleSheet.create({
   kickBtn: { backgroundColor: '#EF4444', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   promoteBtn: { backgroundColor: '#3B82F6', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   modalSubtext: { color: '#9CA3AF', marginTop: 8, fontSize: 14 },
+  userList: {
+    maxHeight: 300,
+    marginVertical: 16,
+  },
+  userItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    marginBottom: 8,
+    backgroundColor: '#1D1F33',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  userItemSelected: {
+    borderColor: '#10B981',
+    borderWidth: 2,
+    backgroundColor: '#1D2F26',
+  },
+  username: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  userEmail: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+  checkmark: {
+    fontSize: 24,
+    color: '#10B981',
+    fontWeight: 'bold',
+  },
   btnDisabled: { opacity: 0.6 },
   contentContainer: { paddingBottom: 20 },
   personalBalance: { color: '#9CA3AF', fontSize: 14, marginTop: 4 },

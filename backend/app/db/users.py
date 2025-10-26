@@ -46,6 +46,28 @@ def get_user_by_id(user_id: str) -> dict:
     return response.get("Item")
 
 
+def get_all_users() -> list:
+    """
+    Get all users from the database
+    
+    Returns:
+        list: List of all user items
+    """
+    try:
+        response = users_table.scan()
+        items = response.get("Items", [])
+        
+        # Handle pagination if there are many users
+        while 'LastEvaluatedKey' in response:
+            response = users_table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+            items.extend(response.get("Items", []))
+        
+        return items
+    except Exception as e:
+        print(f"Error scanning users table: {e}")
+        return []
+
+
 def get_user_by_email(email: str) -> dict:
     """
     Get user by email using GSI
