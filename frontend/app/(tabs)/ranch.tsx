@@ -1,15 +1,21 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, Platform, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
 
 const API_BASE_URL = 'http://localhost:8080';
 
-// Demo credentials (replace with actual auth later)
-const DEMO_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjMmYzMzJmNy03YjYzLTQwNDQtOTI3OC01ZjQ2ODI5YzRjNzUiLCJlbWFpbCI6ImRlbW8xNzYxNDQwMzQwQHRlc3QuY29tIiwiaWF0IjoxNzYxNDU4MzQwfQ.Tb0jfUvO-sYB4oQjolDppUhdTUNfnH6n6J6ypKO4vqw';
-const DEMO_USER_ID = 'c2f332f7-7b63-4044-9278-5f46829c4c75';
+// Platform-specific storage helpers
+const getData = async (key: string) => {
+  if (Platform.OS === 'web') {
+    return localStorage.getItem(key);
+  } else {
+    return await SecureStore.getItemAsync(key);
+  }
+};
 
 interface Transaction {
   transactionID: string;
@@ -46,6 +52,8 @@ export default function RanchScreen() {
 
   console.log('🏠 Ranch screen loaded with params:', { id, name, balance, members });
 
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [ranchBalance, setRanchBalance] = useState(Number(balance));
   const [memberList, setMemberList] = useState<string[]>(members ? members.split(',') : []);
   const [memberCount, setMemberCount] = useState(members ? members.split(',').length : 1);
@@ -53,6 +61,18 @@ export default function RanchScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [proposals, setProposals] = useState<Transaction[]>([]);
   const [personalBalance, setPersonalBalance] = useState(10000); // Mock personal balance - replace with real data
+
+  // Load auth token and userId on mount
+  useEffect(() => {
+    const loadAuth = async () => {
+      const token = await getData('authToken');
+      const userId = await getData('userId');
+      console.log('🔐 Loaded auth:', { token: token?.substring(0, 20) + '...', userId });
+      setAuthToken(token);
+      setCurrentUserId(userId);
+    };
+    loadAuth();
+  }, []);
 
   const investments = [
     { key: 'Liquid', value: ranchBalance * 0.3, color: '#FBBF24' },
@@ -80,7 +100,7 @@ export default function RanchScreen() {
       console.log('🔍 Fetching group data for:', id);
       const response = await fetch(`${API_BASE_URL}/groups/${id}`, {
         headers: {
-          'Authorization': `Bearer ${DEMO_TOKEN}`,
+          'Authorization': `Bearer ${authToken}`,
         },
       });
       if (response.ok) {
@@ -117,7 +137,7 @@ export default function RanchScreen() {
       console.log('🌐 Fetching from:', url);
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${DEMO_TOKEN}`,
+          'Authorization': `Bearer ${authToken}`,
         },
       });
       console.log('📡 Proposals response status:', response.status);
@@ -191,7 +211,7 @@ export default function RanchScreen() {
       const response = await fetch(`${API_BASE_URL}/transactions`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${DEMO_TOKEN}`,
+          'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
@@ -251,7 +271,7 @@ export default function RanchScreen() {
       const response = await fetch(`${API_BASE_URL}/groups/${id}/deposit`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${DEMO_TOKEN}`,
+          'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ amount: -amount }), // Negative amount for withdrawal
@@ -305,7 +325,7 @@ export default function RanchScreen() {
       const response = await fetch(`${API_BASE_URL}/groups/${id}/deposit`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${DEMO_TOKEN}`,
+          'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ amount: amount }), // Positive amount for deposit
@@ -357,7 +377,7 @@ export default function RanchScreen() {
       const response = await fetch(`${API_BASE_URL}/transactions/${transactionId}/vote`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${DEMO_TOKEN}`,
+          'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ vote }),
@@ -382,7 +402,7 @@ export default function RanchScreen() {
       const response = await fetch(`${API_BASE_URL}/transactions/${transactionId}/execute`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${DEMO_TOKEN}`,
+          'Authorization': `Bearer ${authToken}`,
         },
       });
 
@@ -435,7 +455,7 @@ export default function RanchScreen() {
               const rejectCount = Object.values(proposal.votes || {}).filter(v => v === 'reject').length;
               const votesNeeded = Math.ceil(memberCount / 2);
               const votesRemaining = Math.max(0, votesNeeded - approveCount);
-              const userVote = proposal.votes?.[DEMO_USER_ID];
+              const userVote = proposal.votes?.[currentUserId || ''];
 
               // Status colors and emojis
               const statusConfig = {
