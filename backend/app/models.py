@@ -53,6 +53,7 @@ class TransactionCreate(BaseModel):
     groupId: str
     amount: float = Field(..., gt=0)
     description: str = Field(..., min_length=1, max_length=500)
+    transactionType: str = Field(default="investment", pattern="^(investment|withdrawal|deposit)$")
 
 
 class TransactionVote(BaseModel):
