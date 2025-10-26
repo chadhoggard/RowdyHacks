@@ -2,9 +2,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Button, FlatList, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
-
 
 // Helper function for pie chart arcs
 const createArcPath = (cx: number, cy: number, r: number, startAngle: number, endAngle: number) => {
@@ -25,9 +24,8 @@ export default function RanchScreen() {
   }>();
 
   const ranchBalance = Number(balance);
-  const memberList = members ? members.split(',') : ['No members yet'];
+  const [memberList, setMemberList] = useState(members ? members.split(',') : ['No members yet']);
 
-  // Pie chart placeholder data
   const investments = [
     { key: 'Liquid', value: ranchBalance * 0.3, color: '#FBBF24' },
     { key: 'CD', value: ranchBalance * 0.4, color: '#10B981' },
@@ -37,8 +35,10 @@ export default function RanchScreen() {
 
   let startAngle = 0;
 
+  // Modals
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [inviteUsername, setInviteUsername] = useState('');
+  const [manageMembersModalVisible, setManageMembersModalVisible] = useState(false);
 
   const handleInvest = () => Alert.alert(`Invest in ${name}`);
   const handleWithdraw = () => Alert.alert(`Withdraw from ${name}`);
@@ -47,6 +47,15 @@ export default function RanchScreen() {
     Alert.alert('Invite Sent', `You invited ${inviteUsername} to ${name}`);
     setInviteUsername('');
     setInviteModalVisible(false);
+  };
+
+  const handleKickMember = (member: string) => {
+    Alert.alert('Kick Member', `Kicked ${member} from the ranch`);
+    setMemberList(memberList.filter(m => m !== member));
+  };
+
+  const handlePromoteMember = (member: string) => {
+    Alert.alert('Promote Member', `${member} is now an admin!`);
   };
 
   return (
@@ -93,25 +102,26 @@ export default function RanchScreen() {
       </ThemedView>
 
       {/* Actions */}
-        <ThemedView style={styles.section}>
+      <ThemedView style={styles.section}>
         <View style={styles.buttonRow}>
-            {[
+          {[
             { label: 'Invest', color: '#FBBF24', onPress: handleInvest },
             { label: 'Withdraw', color: '#10B981', onPress: handleWithdraw },
             { label: 'Invite', color: '#3B82F6', onPress: () => setInviteModalVisible(true) },
+            { label: 'Manage Members', color: '#8B5CF6', onPress: () => setManageMembersModalVisible(true) },
             { label: 'Delete Ranch', color: '#EF4444', onPress: handleDelete },
-            ].map((btn) => (
+          ].map((btn) => (
             <TouchableOpacity
-                key={btn.label}
-                style={[styles.actionButton, { backgroundColor: btn.color }]}
-                onPress={btn.onPress}
-                activeOpacity={0.7}
+              key={btn.label}
+              style={[styles.actionButton, { backgroundColor: btn.color }]}
+              onPress={btn.onPress}
+              activeOpacity={0.7}
             >
-                <ThemedText style={styles.buttonText}>{btn.label}</ThemedText>
+              <ThemedText style={styles.buttonText}>{btn.label}</ThemedText>
             </TouchableOpacity>
-            ))}
+          ))}
         </View>
-        </ThemedView>
+      </ThemedView>
 
       {/* Invite Modal */}
       <Modal
@@ -131,9 +141,47 @@ export default function RanchScreen() {
               onChangeText={setInviteUsername}
             />
             <View style={styles.modalButtons}>
-              <Button title="Cancel" onPress={() => setInviteModalVisible(false)} color="#EF4444" />
-              <Button title="Send Invite" onPress={handleInvite} color="#3B82F6" />
+              <TouchableOpacity onPress={() => setInviteModalVisible(false)} style={styles.modalBtnCancel}>
+                <ThemedText>Cancel</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleInvite} style={styles.modalBtnSend}>
+                <ThemedText>Send Invite</ThemedText>
+              </TouchableOpacity>
             </View>
+          </ThemedView>
+        </ThemedView>
+      </Modal>
+
+      {/* Manage Members Modal */}
+      <Modal
+        transparent
+        animationType="slide"
+        visible={manageMembersModalVisible}
+        onRequestClose={() => setManageMembersModalVisible(false)}
+      >
+        <ThemedView style={styles.modalBackground}>
+          <ThemedView style={styles.modalContent}>
+            <ThemedText type="subtitle">Manage Members</ThemedText>
+            <FlatList
+              data={memberList}
+              keyExtractor={(item, idx) => idx.toString()}
+              renderItem={({ item }) => (
+                <View style={styles.memberActionRow}>
+                  <ThemedText>👨‍🚀 {item}</ThemedText>
+                  <View style={styles.memberButtons}>
+                    <TouchableOpacity onPress={() => handleKickMember(item)} style={styles.kickBtn}>
+                      <ThemedText>Kick</ThemedText>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handlePromoteMember(item)} style={styles.promoteBtn}>
+                      <ThemedText>Promote</ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            />
+            <TouchableOpacity onPress={() => setManageMembersModalVisible(false)} style={styles.modalCloseBtn}>
+              <ThemedText>Close</ThemedText>
+            </TouchableOpacity>
           </ThemedView>
         </ThemedView>
       </Modal>
@@ -154,24 +202,14 @@ const styles = StyleSheet.create({
   modalContent: { width: 300, padding: 20, backgroundColor: '#1B1F3B', borderRadius: 12 },
   input: { borderWidth: 1, borderColor: '#374151', borderRadius: 8, padding: 8, marginTop: 12, marginBottom: 12, color: '#fff' },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  buttonRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  gap: 12,
-    },
-    actionButton: {
-    flex: 1,
-    paddingVertical: 14,
-    marginVertical: 6,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: '45%', // ensures two buttons per row on small screens
-    },
-    buttonText: {
-    color: '#0B1120',
-    fontWeight: 'bold',
-    fontSize: 16,
-    },
+  modalBtnCancel: { backgroundColor: '#EF4444', padding: 8, borderRadius: 8 },
+  modalBtnSend: { backgroundColor: '#3B82F6', padding: 8, borderRadius: 8 },
+  modalCloseBtn: { marginTop: 12, backgroundColor: '#9CA3AF', padding: 10, borderRadius: 8, alignItems: 'center' },
+  buttonRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
+  actionButton: { flex: 1, paddingVertical: 14, marginVertical: 6, borderRadius: 12, alignItems: 'center', justifyContent: 'center', minWidth: '45%' },
+  buttonText: { color: '#0B1120', fontWeight: 'bold', fontSize: 16 },
+  memberActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 6 },
+  memberButtons: { flexDirection: 'row', gap: 6 },
+  kickBtn: { backgroundColor: '#EF4444', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  promoteBtn: { backgroundColor: '#3B82F6', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
 });
