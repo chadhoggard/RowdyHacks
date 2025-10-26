@@ -88,11 +88,11 @@ export default function HomeScreen() {
               <ThemedText>Members: {Array.isArray(item.members) ? item.members.length : item.members}</ThemedText>
               
               <ThemedText>
-                Monthly Return:{' '}
-                <ThemedText style={styles.returnText}>
-                  {getMockReturn(item.id, item.balance)}
-                </ThemedText>
+              Monthly Return:{' '}
+              <ThemedText style={styles.returnText}>
+                {getMockReturn(item.id, item.balance)}
               </ThemedText>
+            </ThemedText>
 
             </TouchableOpacity>
           )}
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   },
   // Style for list (mobile)
   ranchCardList: {
-    marginHorizontal: 0,
+    marginHorizontal: 12,
     marginBottom: 12,
   },
   logo: {
