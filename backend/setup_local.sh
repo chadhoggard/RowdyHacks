@@ -10,7 +10,13 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Load environment variables from .env file if it exists
 if [ -f .env ]; then
-    export $(grep -v '^#' .env | grep -v '^$' | xargs)
+    echo "✅ Loading environment variables from .env"
+    set -a
+    source .env
+    set +a
+else
+    echo "⚠️  No .env file found. Using default configuration."
+    echo "   (This is okay for local development)"
 fi
 
 # Set Python path dynamically
@@ -19,6 +25,7 @@ export PYTHONPATH="$SCRIPT_DIR"
 # Unset DYNAMODB_ENDPOINT to use real AWS (or keep it for local DynamoDB)
 # unset DYNAMODB_ENDPOINT
 
+echo ""
 echo "🚀 Starting TrustVault Backend..."
 echo "📍 Running on: http://localhost:8080"
 echo "📝 API Docs: http://localhost:8080/docs"
@@ -40,6 +47,8 @@ else
     PYTHON_BIN="python3"
     UVICORN_BIN="uvicorn"
 fi
+
+echo ""
 
 # Start uvicorn
 "$UVICORN_BIN" app.main:app --host 0.0.0.0 --port 8080 --reload
