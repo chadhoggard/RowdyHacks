@@ -81,6 +81,7 @@ export default function RanchScreen() {
 
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [groupOwnerId, setGroupOwnerId] = useState<string | null>(null); // Track who created the group
   const [ranchBalance, setRanchBalance] = useState(Number(balance)); // Liquid cash
   const [investedAmount, setInvestedAmount] = useState(0); // Locked in investments
   const [totalAssets, setTotalAssets] = useState(Number(balance)); // Total = liquid + invested
@@ -201,6 +202,7 @@ export default function RanchScreen() {
         setRanchBalance(data.group?.balance || data.balance || 0);
         setInvestedAmount(data.group?.investedAmount || 0);
         setTotalAssets(data.group?.totalAssets || data.group?.balance || 0);
+        setGroupOwnerId(data.group?.createdBy || null); // Get the group owner
         const membersArr: string[] = data.group?.members || [];
         setMemberList(membersArr);
         setMemberCount(membersArr.length || 0);
@@ -514,8 +516,138 @@ export default function RanchScreen() {
     }
   };
 
-  const handleDelete = () =>
-    Alert.alert("Delete Ranch", `Are you sure you want to delete ${name}?`);
+  const handleDelete = async () => {
+    console.log("🗑️ Delete button clicked!");
+    console.log("Current user:", currentUserId);
+    console.log("Group owner:", groupOwnerId);
+    console.log("Group ID:", id);
+    console.log("Group name:", name);
+    
+    // Use native confirm for web, Alert.alert for mobile
+    const confirmed = Platform.OS === "web" 
+      ? window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)
+      : await new Promise((resolve) => {
+          Alert.alert(
+            "Delete Ranch",
+            `Are you sure you want to delete ${name}? This action cannot be undone.`,
+            [
+              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+              { text: "Delete", style: "destructive", onPress: () => resolve(true) },
+            ]
+          );
+        });
+
+    if (!confirmed) {
+      console.log("❌ User cancelled delete");
+      return;
+    }
+
+    console.log("🗑️ User confirmed delete");
+    try {
+      setLoading(true);
+      console.log("🗑️ Calling DELETE endpoint:", `${API_BASE_URL}/groups/${id}`);
+      const response = await fetch(`${API_BASE_URL}/groups/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+
+      console.log("🗑️ Response status:", response.status);
+      if (response.ok) {
+        console.log("✅ Ranch deleted successfully");
+        
+        // Show success message
+        if (Platform.OS === "web") {
+          alert("Ranch deleted successfully!");
+          window.history.back();
+        } else {
+          Alert.alert("Ranch Deleted", "The ranch has been deleted", [
+            { text: "OK", onPress: () => {} }
+          ]);
+        }
+      } else {
+        const error = await response.json();
+        console.error("❌ Delete error:", error);
+        
+        if (Platform.OS === "web") {
+          alert(`Error: ${error.detail || "Failed to delete ranch"}`);
+        } else {
+          Alert.alert("Error", error.detail || "Failed to delete ranch");
+        }
+      }
+    } catch (error) {
+      console.error("❌ Error deleting ranch:", error);
+      
+      if (Platform.OS === "web") {
+        alert("Error: Failed to delete ranch");
+      } else {
+        Alert.alert("Error", "Failed to delete ranch");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLeave = async () => {
+    // Use native confirm for web, Alert.alert for mobile
+    const confirmed = Platform.OS === "web" 
+      ? window.confirm(`Are you sure you want to leave "${name}"?`)
+      : await new Promise((resolve) => {
+          Alert.alert(
+            "Leave Ranch",
+            `Are you sure you want to leave ${name}?`,
+            [
+              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+              { text: "Leave", style: "destructive", onPress: () => resolve(true) },
+            ]
+          );
+        });
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `${API_BASE_URL}/groups/${id}/members/${currentUserId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        if (Platform.OS === "web") {
+          alert("You have left the ranch");
+          window.history.back();
+        } else {
+          Alert.alert("Left Ranch", "You have left the ranch", [
+            { text: "OK", onPress: () => {} }
+          ]);
+        }
+      } else {
+        const error = await response.json();
+        if (Platform.OS === "web") {
+          alert(`Error: ${error.detail || "Failed to leave ranch"}`);
+        } else {
+          Alert.alert("Error", error.detail || "Failed to leave ranch");
+        }
+      }
+    } catch (error) {
+      console.error("Error leaving ranch:", error);
+      if (Platform.OS === "web") {
+        alert("Error: Failed to leave ranch");
+      } else {
+        Alert.alert("Error", "Failed to leave ranch");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDeposit = () => setDepositModalVisible(true);
 
@@ -1059,35 +1191,54 @@ export default function RanchScreen() {
           {/* Actions */}
           <ThemedView style={styles.section}>
             <View style={styles.buttonRow}>
-              {[
-                { label: "Deposit", color: "#10B981", onPress: handleDeposit },
-                { label: "Invest", color: "#FBBF24", onPress: handleInvest },
-                {
-                  label: "Withdraw",
-                  color: "#F59E0B",
-                  onPress: handleWithdraw,
-                },
-                { label: "Invite", color: "#3B82F6", onPress: handleInvite },
-                {
-                  label: "Manage Members",
-                  color: "#8B5CF6",
-                  onPress: () => setManageMembersModalVisible(true),
-                },
-                {
-                  label: "Delete Ranch",
-                  color: "#EF4444",
-                  onPress: handleDelete,
-                },
-              ].map((btn) => (
-                <TouchableOpacity
-                  key={btn.label}
-                  style={[styles.actionButton, { backgroundColor: btn.color }]}
-                  onPress={btn.onPress}
-                  activeOpacity={0.7}
-                >
-                  <ThemedText style={styles.buttonText}>{btn.label}</ThemedText>
-                </TouchableOpacity>
-              ))}
+              {(() => {
+                const isOwner = currentUserId === groupOwnerId;
+                console.log("🔍 Button render check:");
+                console.log("  Current User ID:", currentUserId);
+                console.log("  Group Owner ID:", groupOwnerId);
+                console.log("  Is Owner:", isOwner);
+                
+                const buttons = [
+                  { label: "Deposit", color: "#10B981", onPress: handleDeposit },
+                  { label: "Invest", color: "#FBBF24", onPress: handleInvest },
+                  {
+                    label: "Withdraw",
+                    color: "#F59E0B",
+                    onPress: handleWithdraw,
+                  },
+                  { label: "Invite", color: "#3B82F6", onPress: handleInvite },
+                  {
+                    label: "Manage Members",
+                    color: "#8B5CF6",
+                    onPress: () => setManageMembersModalVisible(true),
+                  },
+                  // Show "Delete Ranch" for owner, "Leave Ranch" for members
+                  isOwner
+                    ? {
+                        label: "Delete Ranch",
+                        color: "#EF4444",
+                        onPress: handleDelete,
+                      }
+                    : {
+                        label: "Leave Ranch",
+                        color: "#EF4444",
+                        onPress: handleLeave,
+                      },
+                ];
+                
+                console.log("  Last button label:", buttons[buttons.length - 1].label);
+                
+                return buttons.map((btn) => (
+                  <TouchableOpacity
+                    key={btn.label}
+                    style={[styles.actionButton, { backgroundColor: btn.color }]}
+                    onPress={btn.onPress}
+                    activeOpacity={0.7}
+                  >
+                    <ThemedText style={styles.buttonText}>{btn.label}</ThemedText>
+                  </TouchableOpacity>
+                ));
+              })()}
             </View>
           </ThemedView>
         </ThemedView>

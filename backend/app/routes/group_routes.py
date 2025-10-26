@@ -228,6 +228,39 @@ def remove_member(
     return {"message": "Member removed successfully"}
 
 
+@router.delete("/{group_id}", response_model=dict)
+def delete_group(
+    group_id: str,
+    token: dict = Depends(verify_token)
+):
+    """
+    Delete a group/ranch
+    
+    - Only the owner can delete the group
+    - Removes group from all members' groups list
+    """
+    user_id = token["sub"]
+    
+    # Get group
+    group = groups.get_group(group_id)
+    if not group:
+        raise HTTPException(404, "Group not found")
+    
+    # Check if user is the owner
+    if not groups.is_owner(group_id, user_id):
+        raise HTTPException(403, "Only the owner can delete the group")
+    
+    # Remove group from all members' groups list
+    members = group.get("members", [])
+    for member_id in members:
+        users.remove_group_from_user(member_id, group_id)
+    
+    # Delete the group
+    groups.delete_group(group_id)
+    
+    return {"message": "Group deleted successfully"}
+
+
 @router.post("/{group_id}/deposit", response_model=dict)
 def deposit_to_group(
     group_id: str,
