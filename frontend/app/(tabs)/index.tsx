@@ -30,13 +30,8 @@ const getMockReturn = (balance: number) => {
   return `+$${amount.toLocaleString()} (${percentString}%)`;
 };
 
-// Initial data
-const mockRanches: Ranch[] = [
-  { id: 'aab32fee-a207-4628-89b0-26ab98377c23', name: 'Area 51 Ranch', balance: 5000, members: ['Alice', 'Bob', 'Charlie'] },
-  { id: '2', name: 'Rodeo Investors', balance: 10000, members: ['Dave', 'Eve', 'Frank', 'Grace', 'Heidi'] },
-  { id: '3', name: 'Cosmic Corral', balance: 7500, members: ['Ivan', 'Judy'] },
-  { id: '4', name: 'Star Ranch', balance: 4200, members: ['Ken', 'Laura'] },
-];
+// Initial data - no mock ranches, users start fresh
+const mockRanches: Ranch[] = [];
 
 // Special item for the "Add" button
 const addButton: Ranch = { id: 'add', name: 'Add Ranch', balance: 0, members: [] };
@@ -45,7 +40,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   
-  const [ranches, setRanches] = useState<Ranch[]>([addButton, ...mockRanches]);
+  const [ranches, setRanches] = useState<Ranch[]>([addButton]);
   const [addRanchModalVisible, setAddRanchModalVisible] = useState(false);
   const [newRanchName, setNewRanchName] = useState('');
   
