@@ -193,13 +193,20 @@ def execute_transaction(transaction_id: str, token: dict = Depends(verify_token)
     current_balance = float(group.get("balance", 0))
     transaction_amount = float(transaction["amount"])
     
-    # Check if sufficient funds
-    if current_balance < transaction_amount:
-        raise HTTPException(400, f"Insufficient funds (balance: ${current_balance}, required: ${transaction_amount})")
+    # Determine if this is a deposit (positive) or withdrawal (negative)
+    # Investment proposals have positive amounts, so they should ADD to balance
+    # Withdrawal proposals would have negative amounts (though currently not supported)
     
-    # Execute: Update balance (negative amount to deduct)
-    groups.update_balance(group_id, -transaction_amount)
-    new_balance = current_balance - transaction_amount
+    if transaction_amount > 0:
+        # This is an investment/deposit - ADD to group balance
+        groups.update_balance(group_id, transaction_amount)
+        new_balance = current_balance + transaction_amount
+    else:
+        # This is a withdrawal - DEDUCT from group balance
+        if current_balance < abs(transaction_amount):
+            raise HTTPException(400, f"Insufficient funds (balance: ${current_balance}, required: ${abs(transaction_amount)})")
+        groups.update_balance(group_id, transaction_amount)
+        new_balance = current_balance + transaction_amount  # transaction_amount is already negative
     
     # Mark transaction as executed
     transactions.update_status(transaction_id, "executed")

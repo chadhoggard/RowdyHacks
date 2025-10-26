@@ -356,10 +356,60 @@ export default function RanchScreen() {
     }
   };
   
-  const handleInvite = () => {
-    Alert.alert('Invite Sent', `You invited ${inviteUsername} to ${name}`);
-    setInviteUsername('');
-    setInviteModalVisible(false);
+  const handleInvite = async () => {
+    if (!inviteUsername.trim()) {
+      Alert.alert('Error', 'Please enter an email address');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(inviteUsername.trim())) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return;
+    }
+
+    console.log('📧 Sending invite to:', inviteUsername);
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/invites`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          groupId: id,
+          inviteeEmail: inviteUsername.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Invite sent:', data);
+        Alert.alert(
+          'Invite Sent! 📧',
+          `Successfully invited ${inviteUsername} to ${name}. They will receive the invite when they log in.`
+        );
+        setInviteUsername('');
+        setInviteModalVisible(false);
+      } else {
+        const error = await response.json();
+        console.log('❌ Invite error:', error);
+        if (error.detail === 'Only group owners can send invites') {
+          Alert.alert('Permission Denied', 'Only the ranch owner can send invites');
+        } else if (error.detail?.includes('already')) {
+          Alert.alert('Already Invited', `${inviteUsername} has already been invited to this ranch`);
+        } else {
+          Alert.alert('Error', error.detail || 'Failed to send invite');
+        }
+      }
+    } catch (error) {
+      console.log('❌ Network error:', error);
+      Alert.alert('Error', 'Network error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleKickMember = (member: string) => {
@@ -607,20 +657,40 @@ export default function RanchScreen() {
     >
       <ThemedView style={styles.modalBackground}>
         <ThemedView style={styles.modalContent}>
-          <ThemedText type="subtitle">Invite Cowboy to Ranch</ThemedText>
+          <ThemedText type="subtitle">📧 Invite to {name}</ThemedText>
+          <ThemedText style={styles.modalSubtext}>
+            Enter the email address of the person you want to invite
+          </ThemedText>
           <TextInput
             style={styles.input}
-            placeholder="Username"
+            placeholder="user@example.com"
             placeholderTextColor="#9CA3AF"
+            keyboardType="email-address"
+            autoCapitalize="none"
             value={inviteUsername}
             onChangeText={setInviteUsername}
           />
           <View style={styles.modalButtons}>
-            <TouchableOpacity onPress={() => setInviteModalVisible(false)} style={styles.modalBtnCancel}>
+            <TouchableOpacity 
+              onPress={() => {
+                setInviteModalVisible(false);
+                setInviteUsername('');
+              }} 
+              style={styles.modalBtnCancel}
+              disabled={loading}
+            >
               <ThemedText>Cancel</ThemedText>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleInvite} style={styles.modalBtnSend}>
-              <ThemedText>Send Invite</ThemedText>
+            <TouchableOpacity 
+              onPress={handleInvite} 
+              style={[styles.modalBtnSend, loading && styles.btnDisabled]}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <ThemedText>Send Invite</ThemedText>
+              )}
             </TouchableOpacity>
           </View>
         </ThemedView>
