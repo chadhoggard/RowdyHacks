@@ -79,6 +79,12 @@ export default function AccountScreen() {
           setEmail(data.email || 'Not available');
           setBalance(data.balance || 0);
           setTotalInvested(data.totalInvested || 0);
+          
+          // If balance is 0, initialize it for existing users
+          if (data.balance === 0 || data.balance === undefined) {
+            console.log('⚠️ Balance is 0, initializing...');
+            await initializeBalance(token);
+          }
         } else {
           console.error('❌ Failed to fetch user details:', response.status);
           setUserId('Unable to load');
@@ -97,6 +103,28 @@ export default function AccountScreen() {
 
     fetchUserDetails();
   }, []);
+
+  const initializeBalance = async (token: string) => {
+    try {
+      console.log('💰 Initializing balance...');
+      const response = await fetch(`${API_BASE_URL}/users/me/initialize-balance`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Balance initialized:', data);
+        if (data.initialized) {
+          setBalance(data.newBalance);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error initializing balance:', error);
+    }
+  };
 
   const handleAddFunds = async () => {
     console.log('💰 Adding $1000 to account');

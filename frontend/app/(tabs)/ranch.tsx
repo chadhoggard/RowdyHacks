@@ -146,7 +146,7 @@ export default function RanchScreen() {
       if (response.ok) {
         const data = await response.json();
         console.log("✅ User data fetched:", data);
-        setPersonalBalance(data.totalInvested || 0);
+        setPersonalBalance(data.balance || 0);
       } else {
         console.log("❌ Failed to fetch personal balance:", response.status);
       }

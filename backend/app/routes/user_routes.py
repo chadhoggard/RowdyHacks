@@ -170,7 +170,7 @@ def add_funds_to_account(token: dict = Depends(verify_token)):
     """
     user_id = token["sub"]
     
-    # Add $1000 to user's balance
+    # Initialize balance if it doesn't exist, then add $1000
     users.update_user_balance(user_id, 1000)
     
     # Get updated balance
@@ -183,4 +183,36 @@ def add_funds_to_account(token: dict = Depends(verify_token)):
         "newBalance": new_balance,
         "amountAdded": 1000
     }
+
+
+@router.post("/me/initialize-balance")
+def initialize_balance(token: dict = Depends(verify_token)):
+    """
+    Initialize balance for existing users who don't have the balance field yet
+    Sets balance to 10000 if it doesn't exist
+    """
+    user_id = token["sub"]
+    
+    # Check current balance
+    current_balance = users.get_user_balance(user_id)
+    
+    if current_balance == 0:
+        # Initialize with 10000
+        users.update_user_balance(user_id, 10000)
+        new_balance = users.get_user_balance(user_id)
+        
+        print(f"💰 Initialized balance for user {user_id}: ${new_balance}")
+        
+        return {
+            "message": "Balance initialized successfully",
+            "newBalance": new_balance,
+            "initialized": True
+        }
+    else:
+        return {
+            "message": "Balance already exists",
+            "newBalance": current_balance,
+            "initialized": False
+        }
+
 

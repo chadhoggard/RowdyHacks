@@ -158,7 +158,10 @@ def update_user_balance(user_id: str, amount: float):
     from decimal import Decimal
     users_table.update_item(
         Key={USER_PK_ATTR: user_id},
-        UpdateExpression="SET balance = balance + :amount",
-        ExpressionAttributeValues={":amount": Decimal(str(amount))}
+        UpdateExpression="SET balance = if_not_exists(balance, :zero) + :amount",
+        ExpressionAttributeValues={
+            ":amount": Decimal(str(amount)),
+            ":zero": Decimal('0')
+        }
     )
 
