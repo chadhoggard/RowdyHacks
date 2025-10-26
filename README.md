@@ -1,8 +1,8 @@
-# 🤠 TrustVault - Democratic Group Investment Platform
+# 🤠 Frontier Fund - Democratic Group Investment Platform
 
 **Built at RowdyHacks 2025**
 
-TrustVault is a mobile app that enables groups to democratically manage shared investments through proposal-based voting. Create "ranches" (investment groups), propose transactions, vote as a group, and invest together!
+Frontier Fund is a mobile app that enables groups to democratically manage shared investments through proposal-based voting. Create "ranches" (investment groups), propose transactions, vote as a group, and invest together!
 
 ## ⚡ Quick Start for Teammates
 
@@ -94,7 +94,7 @@ npx expo start
 
 ## 🌟 Stock Trading
 
-TrustVault integrates with Alpaca's paper trading API for real-time stock data:
+Frontier Fund integrates with Alpaca's paper trading API for real-time stock data:
 
 - **35+ Stocks** in 8 categories
 - **Real-time Prices** from Alpaca
@@ -174,4 +174,4 @@ MIT License - Built for RowdyHacks 2025
 
 **Questions?** Check the docs or ask your team lead!
 
-Made with 🤠 by the TrustVault team
+Made with 🤠 by the Frontier Fund team
