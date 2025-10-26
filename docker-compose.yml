@@ -1,34 +1,62 @@
+version: '3.9'
+
 networks:
   trustvault:
     driver: bridge
 
 services:
   backend:
-    build: ./backend
+    build: ./backend # Looks for ./backend/Dockerfile
     container_name: trustvault-backend
+    # Overrides the Dockerfile's CMD to enable --reload for dev
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
+    volumes:
+      # Mounts local backend folder into container's /app WORKDIR
+      # This is necessary for --reload to see your file changes
+      - ./backend:/app
     ports:
       - "8080:8080"
     environment:
+      # Service-to-service communication:
+      # 'dynamodb' is the hostname of the dynamodb service
       - DYNAMODB_ENDPOINT=http://dynamodb:8000
     env_file:
       - ./backend/.env
-    volumes:
-      - ./backend/app:/app/app
     depends_on:
       - dynamodb
+    networks:
+      - trustvault
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile # Assumes ./frontend/Dockerfile for Expo Web
+    container_name: trustvault-frontend
+    command: npm run dev -- --host # Or "npx expo start --web --host 0.0.0.0"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # Protects node_modules from being overwritten by the mount
+    ports:
+      - "5173:5173" # Change this port if your frontend runs on a different one
+    depends_on:
+      - backend
     networks:
       - trustvault
 
   dynamodb:
     image: amazon/dynamodb-local:2.5.2
     container_name: trustvault-dynamodb
-    command: -jar DynamoDBLocal.jar -sharedDb -inMemory
+    # We remove -inMemory and add -dbPath . (dot)
+    # This stores data in the WORKDIR, which we will mount.
+    command: -jar DynamoDBLocal.jar -sharedDb -dbPath .
     ports:
       - "8000:8000"
+    volumes:
+      # Mount a named volume to the container's WORKDIR (/home/dynamodblocal)
+      # This makes your local DynamoDB data persistent.
+      - dynamodb_data:/home/dynamodblocal
     networks:
       - trustvault
-    environment:
-      - AWS_REGION=us-east-1
 
   dynamodb-admin:
     image: aaronshaf/dynamodb-admin:latest
@@ -38,10 +66,12 @@ services:
     networks:
       - trustvault
     environment:
+      # Tells the admin tool how to find the dynamodb service
       - DYNAMO_ENDPOINT=http://dynamodb:8000
-      - AWS_REGION=us-east-1
+      - AWS_REGION=us-east-1 # Good to keep for SDK consistency
     depends_on:
       - dynamodb
 
-# Frontend: Run locally for better dev experience
-# Instructions: cd frontend && npm install && npm start
+# Define the named volume for DynamoDB persistence
+volumes:
+  dynamodb_data:
