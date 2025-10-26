@@ -1,57 +1,166 @@
-// app/components/SplashScreen.tsx
-import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet } from 'react-native';
+
+const AnimatedImage = Animated.Image;
+const LinearGradient = (props) => {
+  const { colors, style, ...rest } = props;
+  const webStyle = {
+    background: `linear-gradient(${colors.join(',')})`,
+    ...style,
+  };
+  return <div style={webStyle} {...rest} />;
+};
+
+const RadialGradient = (props) => {
+  const { colors, style, center, radius, ...rest } = props;
+  const webStyle = {
+    background: `radial-gradient(circle at ${center.x * 100}% ${center.y * 100}%, ${colors.join(',')})`,
+    ...style,
+  };
+  return <div style={webStyle} {...rest} />;
+};
+
+const generateStars = (count) => {
+  const stars = [];
+  for (let i = 0; i < count; i++) {
+    stars.push({
+      id: i,
+      x: Math.random() * 100 + '%',
+      y: Math.random() * 100 + '%',
+      size: Math.random() * 2 + 1,
+      delay: Math.random() * 2000,
+      duration: Math.random() * 1000 + 1000,
+    });
+  }
+  return stars;
+};
+
+const starsData = generateStars(100);
 
 export default function SplashScreen() {
-  const router = useRouter();
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const starOpacities = useRef(starsData.map(() => new Animated.Value(0))).current;
+  const nebulaAnim = useRef(new Animated.Value(0)).current;
 
-  const opacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.8)).current;
 
   useEffect(() => {
-    // Animate opacity and scale
     Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 1200,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scale, {
-        toValue: 1,
-        friction: 5,
-        useNativeDriver: true,
-      }),
+      Animated.timing(opacityAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, friction: 5, useNativeDriver: true }),
     ]).start();
 
-    // Navigate to HomeScreen after 2 seconds
-    const timeout = setTimeout(() => {
-      router.replace('/(tabs)');
-    }, 2000);
+    starsData.forEach((star, index) => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(star.delay),
+          Animated.timing(starOpacities[index], {
+            toValue: 1,
+            duration: star.duration / 2,
+            useNativeDriver: true,
+          }),
+          Animated.timing(starOpacities[index], {
+            toValue: 0.2,
+            duration: star.duration / 2,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    });
 
-    return () => clearTimeout(timeout);
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(nebulaAnim, {
+          toValue: 1,
+          duration: 3000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(nebulaAnim, {
+          toValue: 0,
+          duration: 3000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
   }, []);
 
+  const nebulaScale = nebulaAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.2],
+  });
+  const nebulaOpacity = nebulaAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.4, 0.7],
+  });
+
   return (
-    <View style={styles.container}>
-      <Animated.Image
+    <LinearGradient
+      colors={['#0A0A1F', '#1A0A3A', '#2A0A4A']}
+      style={styles.container}
+    >
+      {starsData.map((star, index) => (
+        <Animated.View
+          key={star.id}
+          style={[
+            styles.star,
+            {
+              left: star.x,
+              top: star.y,
+              width: star.size,
+              height: star.size,
+              opacity: starOpacities[index],
+            },
+          ]}
+        />
+      ))}
+
+      <Animated.View
+        style={[
+          styles.nebulaEffect,
+          {
+            transform: [{ scale: nebulaScale }],
+            opacity: nebulaOpacity,
+          },
+        ]}
+      >
+        <RadialGradient
+          colors={['rgba(150, 0, 255, 0.3)', 'rgba(255, 0, 150, 0.2)', 'transparent']}
+          center={{ x: 0.5, y: 0.5 }}
+          radius={[0.2, 0.8]}
+          style={StyleSheet.absoluteFillObject}
+        />
+      </Animated.View>
+
+      <AnimatedImage
         source={require('../assets/images/logo-2x.png')}
-        style={[styles.logo, { opacity, transform: [{ scale }] }]}
+        style={[styles.logo, { opacity: opacityAnim, transform: [{ scale: scaleAnim }] }]}
         resizeMode="contain"
       />
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B1120', // dark background
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
   logo: {
     width: 200,
     height: 200,
+    zIndex: 10,
+  },
+  star: {
+    position: 'absolute',
+    backgroundColor: 'white',
+    borderRadius: 999,
+    opacity: 0,
+  },
+  nebulaEffect: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
   },
 });
