@@ -47,6 +47,7 @@ export default function AccountScreen() {
   const [userId, setUserId] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [totalInvested, setTotalInvested] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -74,6 +75,7 @@ export default function AccountScreen() {
           setUserId(data.userId || 'Not available');
           setUsername(data.username || 'Not available');
           setEmail(data.email || 'Not available');
+          setTotalInvested(data.totalInvested || 0);
         } else {
           console.error('❌ Failed to fetch user details:', response.status);
           setUserId('Unable to load');
@@ -183,6 +185,22 @@ export default function AccountScreen() {
             </View>
           </ThemedView>
 
+          {/* Investment Info Card */}
+          <ThemedView style={styles.investmentCard}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>💰 Investment Summary</ThemedText>
+            
+            <View style={styles.investmentAmountContainer}>
+              <ThemedText style={styles.investmentLabel}>Total Invested:</ThemedText>
+              <ThemedText style={styles.investmentAmount}>
+                ${totalInvested.toFixed(2)}
+              </ThemedText>
+            </View>
+            
+            <ThemedText style={styles.investmentNote}>
+              This is the total amount you've invested across all your ranches after proposals were approved.
+            </ThemedText>
+          </ThemedView>
+
           {/* Settings Card */}
           <ThemedView style={styles.settingsCard}>
             <ThemedText type="subtitle" style={styles.sectionTitle}>Settings</ThemedText>
@@ -245,6 +263,41 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
+  },
+  investmentCard: {
+    backgroundColor: '#1D1F33',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  investmentAmountContainer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  investmentLabel: {
+    fontSize: 16,
+    color: '#9CA3AF',
+    marginBottom: 8,
+  },
+  investmentAmount: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#10B981',
+    textShadowColor: 'rgba(16, 185, 129, 0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
+  investmentNote: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginTop: 8,
   },
   settingsCard: {
     backgroundColor: '#1D1F33',

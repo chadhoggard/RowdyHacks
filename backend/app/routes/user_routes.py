@@ -35,6 +35,8 @@ def get_current_user(token: dict = Depends(verify_token)):
                 "groupID": group.get("groupID"),
                 "name": group.get("name"),
                 "balance": group.get("balance", 0),
+                "investedAmount": group.get("investedAmount", 0),
+                "totalAssets": float(group.get("balance", 0)) + float(group.get("investedAmount", 0)),
                 "members": group.get("members", [])
             })
         else:
