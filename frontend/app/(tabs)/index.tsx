@@ -89,9 +89,9 @@ export default function HomeScreen() {
       if (response.ok) {
         const data = await response.json();
         // Count transactions with status "pending"
-        const pendingCount = data.transactions?.filter(
-          (tx: any) => tx.status === "pending"
-        ).length || 0;
+        const pendingCount =
+          data.transactions?.filter((tx: any) => tx.status === "pending")
+            .length || 0;
         return pendingCount;
       }
       return 0;
@@ -446,60 +446,6 @@ export default function HomeScreen() {
                 </ThemedText>
               </View>
             </View>
-
-            {/* Recent Contributions */}
-            <View style={styles.recentContributions}>
-              <ThemedText style={styles.recentTitle}>
-                Recent Activity
-              </ThemedText>
-              {contributions
-                .sort(
-                  (a, b) =>
-                    new Date(b.date).getTime() - new Date(a.date).getTime()
-                )
-                .slice(0, 5)
-                .map((contribution, index) => (
-                  <View key={index} style={styles.contributionItem}>
-                    <View style={styles.contributionLeft}>
-                      <View style={styles.contributionIcon}>
-                        <ThemedText style={styles.contributionIconText}>
-                          💰
-                        </ThemedText>
-                      </View>
-                      <View>
-                        <ThemedText style={styles.contributionRanchName}>
-                          {contribution.ranchName}
-                        </ThemedText>
-                        <ThemedText style={styles.contributionDate}>
-                          {new Date(contribution.date).toLocaleDateString(
-                            "en-US",
-                            {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            }
-                          )}
-                        </ThemedText>
-                      </View>
-                    </View>
-                    <ThemedText style={styles.contributionAmount}>
-                      +${contribution.amount.toLocaleString()}
-                    </ThemedText>
-                  </View>
-                ))}
-            </View>
-
-            {/* Mini Chart */}
-            <View style={styles.miniChart}>
-              <ThemedText style={styles.chartTitle}>30-Day Trend</ThemedText>
-              <View style={styles.chartBars}>
-                {[40, 65, 45, 80, 60, 90, 75].map((height, i) => (
-                  <View key={i} style={styles.chartBarContainer}>
-                    <View style={[styles.chartBar, { height: `${height}%` }]} />
-                  </View>
-                ))}
-              </View>
-            </View>
           </ThemedView>
         )}
 
@@ -536,13 +482,14 @@ export default function HomeScreen() {
                 activeOpacity={0.8}
               >
                 {/* Pending Approval Badge */}
-                {ranch.pendingApprovals && ranch.pendingApprovals > 0 && (
-                  <View style={styles.approvalBadge}>
-                    <ThemedText style={styles.approvalBadgeText}>
-                      {ranch.pendingApprovals} Pending
-                    </ThemedText>
-                  </View>
-                )}
+                {typeof ranch.pendingApprovals === "number" &&
+                  ranch.pendingApprovals > 0 && (
+                    <View style={styles.approvalBadge}>
+                      <ThemedText style={styles.approvalBadgeText}>
+                        {ranch.pendingApprovals} Pending
+                      </ThemedText>
+                    </View>
+                  )}
 
                 <ThemedText type="subtitle" style={styles.ranchName}>
                   {ranch.name}
