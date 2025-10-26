@@ -87,11 +87,14 @@ export default function HomeScreen() {
       );
 
       if (response.ok) {
+        const userId = await getData("userId");
         const data = await response.json();
-        // Count transactions with status "pending"
+        // Count pending transactions that the user hasn't voted on yet
         const pendingCount =
-          data.transactions?.filter((tx: any) => tx.status === "pending")
-            .length || 0;
+          data.transactions?.filter((tx: any) => {
+            if (!userId) return false;
+            return tx.status === "pending" && (!tx.votes || !tx.votes[userId]);
+          }).length || 0;
         return pendingCount;
       }
       return 0;
