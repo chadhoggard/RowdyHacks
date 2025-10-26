@@ -1,5 +1,120 @@
 # 📚 TrustVault Backend - Documentation Index
 
+## 🚀 Quick Setup for New Developers
+
+### **First Time Setup (Your Friend's Computer)**
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/chadhoggard/RowdyHacks.git
+   cd RowdyHacks/backend
+   ```
+
+2. **Create .env file**
+   ```bash
+   cp .env.example .env
+   ```
+
+3. **Add AWS Credentials to .env**
+   
+   Open `.env` and add your AWS credentials:
+   ```bash
+   AWS_ACCESS_KEY_ID=your_access_key_here
+   AWS_SECRET_ACCESS_KEY=your_secret_key_here
+   AWS_REGION=us-east-1
+   
+   # Table Names (use these exact names)
+   USERS_TABLE=Users
+   GROUPS_TABLE=Groups
+   TRANSACTIONS_TABLE=Transactions
+   INVITES_TABLE=Invites
+   
+   # JWT Secret (can be any random string)
+   JWT_SECRET=your-random-secret-here
+   ```
+   
+   **Where to get AWS credentials:**
+   - Ask the team lead (Chad) for the shared credentials
+   - OR create your own AWS account and set up DynamoDB tables
+
+4. **Install Dependencies**
+   ```bash
+   # If using the setup script:
+   ./setup_local.sh
+   
+   # Or manually:
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+5. **Initialize Database Tables** (First time only)
+   ```bash
+   python -m app.init_tables
+   ```
+   
+   You should see:
+   ```
+   ✅ Table 'Users' exists or was created
+   ✅ Table 'Groups' exists or was created
+   ✅ Table 'Transactions' exists or was created
+   ✅ Table 'Invites' exists or was created
+   ```
+
+6. **Start the Server**
+   ```bash
+   # Using the setup script:
+   ./setup_local.sh
+   
+   # Or manually:
+   source .venv/bin/activate
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
+   ```
+
+7. **Test the API**
+   - Open browser: http://localhost:8080/docs
+   - Try the `/health` endpoint
+   - Try creating a test account with `/auth/signup`
+
+### **Common Errors and Solutions**
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| "AWS credentials not configured" | Missing .env file | Create .env file and add AWS credentials |
+| "Database tables not initialized" | Tables don't exist in DynamoDB | Run: `python -m app.init_tables` |
+| "Cannot connect to DynamoDB" | Wrong AWS region or no internet | Check AWS_REGION in .env, verify internet connection |
+| "Email already registered" | User already exists | Try a different email or login instead |
+| "Module not found" | Dependencies not installed | Run: `pip install -r requirements.txt` |
+
+### **Troubleshooting**
+
+If signup still fails:
+
+1. **Check if .env file exists:**
+   ```bash
+   ls -la .env
+   cat .env
+   ```
+
+2. **Verify AWS credentials are set:**
+   ```bash
+   echo $AWS_ACCESS_KEY_ID
+   echo $AWS_SECRET_ACCESS_KEY
+   ```
+
+3. **Test database connection:**
+   ```bash
+   python -c "from app.db.connection import users_table; print(users_table.table_status)"
+   ```
+
+4. **Check server logs for detailed error:**
+   Look at the terminal where `uvicorn` is running
+
+5. **Ask for help:**
+   Share the exact error message from the terminal with the team
+
+---
+
 ## 🎯 Start Here!
 
 Your 300-line `main.py` has been refactored into a clean, professional structure with 13 organized files!

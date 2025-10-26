@@ -88,13 +88,21 @@ export default function HomeScreen() {
         console.log('📦 User data:', data);
         
         if (data.groups && data.groups.length > 0) {
-          const userRanches: Ranch[] = data.groups.map((group: any) => ({
-            id: group.groupID,
-            name: group.name,
-            balance: group.balance || 0,
-            members: group.members || [],
-          }));
+          console.log('📋 Raw groups data:', data.groups);
+          const userRanches: Ranch[] = data.groups.map((group: any) => {
+            console.log('🔍 Mapping group:', group);
+            console.log('🔑 groupID:', group.groupID);
+            const ranch = {
+              id: group.groupID,
+              name: group.name,
+              balance: group.balance || 0,
+              members: group.members || [],
+            };
+            console.log('🏠 Created ranch object:', ranch);
+            return ranch;
+          });
           console.log('✅ Loaded ranches:', userRanches);
+          console.log('✅ Ranch IDs:', userRanches.map(r => r.id));
           setRanches([addButton, ...userRanches]);
         } else {
           console.log('📭 No ranches found');

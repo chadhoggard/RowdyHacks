@@ -67,12 +67,30 @@ export default function RanchScreen() {
     const loadAuth = async () => {
       const token = await getData('authToken');
       const userId = await getData('userId');
-      console.log('🔐 Loaded auth:', { token: token?.substring(0, 20) + '...', userId });
+      console.log('🔐 Loaded auth:', { 
+        tokenLength: token?.length, 
+        tokenPreview: token?.substring(0, 20) + '...', 
+        userId 
+      });
+      if (!token) {
+        console.error('❌ No auth token found!');
+      } else if (token.split('.').length !== 3) {
+        console.error('❌ Invalid token format! Segments:', token.split('.').length);
+      }
       setAuthToken(token);
       setCurrentUserId(userId);
     };
     loadAuth();
   }, []);
+
+  // Fetch data when auth token is loaded
+  useEffect(() => {
+    if (authToken && id) {
+      console.log('✅ Auth token loaded, fetching data...');
+      fetchGroupData();
+      fetchProposals();
+    }
+  }, [authToken, id]);
 
   const investments = [
     { key: 'Liquid', value: ranchBalance * 0.3, color: '#FBBF24' },
@@ -96,8 +114,13 @@ export default function RanchScreen() {
   // Fetch updated group balance and members
   const fetchGroupData = async () => {
     if (!id) return;
+    if (!authToken) {
+      console.log('⚠️ No auth token yet, skipping fetch');
+      return;
+    }
     try {
       console.log('🔍 Fetching group data for:', id);
+      console.log('🔑 Using token length:', authToken.length);
       const response = await fetch(`${API_BASE_URL}/groups/${id}`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -129,6 +152,10 @@ export default function RanchScreen() {
   const fetchProposals = async () => {
     if (!id) {
       console.log('⚠️ No group ID, skipping fetch');
+      return;
+    }
+    if (!authToken) {
+      console.log('⚠️ No auth token yet, skipping proposals fetch');
       return;
     }
     console.log('🔍 Fetching proposals for group:', id);

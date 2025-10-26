@@ -1,7 +1,7 @@
-import * as Haptics from 'expo-haptics';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Alert, Pressable } from 'react-native';
+import { Pressable, Alert } from 'react-native';
+import * as Haptics from 'expo-haptics';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { Colors } from '@/constants/theme';
@@ -52,13 +52,6 @@ export default function TabLayout() {
         name="transactions"
         options={{
           href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="account"
-        options={{
-          title: 'Account',
-          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="account-circle" size={size} color={color} />,
         }}
       />
     </Tabs>
