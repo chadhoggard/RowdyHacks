@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated } from 'react-native';
 import 'react-native-reanimated';
 
+//this needs to be changed to run login screen
 export const unstable_settings = {
   anchor: '(tabs)',
 };
@@ -31,6 +32,7 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
+         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
