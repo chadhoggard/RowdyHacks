@@ -121,3 +121,35 @@ def has_user_voted(transaction_id: str, user_id: str) -> bool:
     """Check if user has already voted on transaction"""
     votes = get_votes(transaction_id)
     return user_id in votes
+
+
+def get_user_transaction_history(group_ids: list) -> list:
+    """
+    Get all transactions for user's groups
+    
+    Args:
+        group_ids: List of group IDs user belongs to
+        
+    Returns:
+        list: List of all transactions from user's groups, sorted by date
+    """
+    all_transactions = []
+    
+    for group_id in group_ids:
+        try:
+            # Try using GSI if available
+            transactions = get_group_transactions(group_id)
+            all_transactions.extend(transactions)
+        except Exception as e:
+            # If GSI doesn't exist, scan the table (slower but works)
+            print(f"Warning: GSI not available, using scan for group {group_id}: {e}")
+            response = transactions_table.scan(
+                FilterExpression="groupID = :gid",
+                ExpressionAttributeValues={":gid": group_id}
+            )
+            all_transactions.extend(response.get("Items", []))
+    
+    # Sort by createdAt date, newest first
+    all_transactions.sort(key=lambda x: x.get("createdAt", ""), reverse=True)
+    
+    return all_transactions

@@ -60,6 +60,7 @@ def get_group_details(group_id: str, token: dict = Depends(verify_token)):
     Get details of a specific group
     
     - Must be a member to view
+    - Includes member details (username, email)
     """
     user_id = token["sub"]
     
@@ -72,7 +73,65 @@ def get_group_details(group_id: str, token: dict = Depends(verify_token)):
     if not groups.is_member(group_id, user_id):
         raise HTTPException(403, "You are not a member of this group")
     
-    return {"group": group}
+    # Fetch member details
+    member_details = []
+    for member_id in group.get("members", []):
+        member = users.get_user_by_id(member_id)
+        if member:
+            member_details.append({
+                "userId": member.get("userID"),
+                "username": member.get("username"),
+                "email": member.get("email"),
+                "role": member.get("role", "member")
+            })
+    
+    # Add member details to group response
+    group_with_members = dict(group)
+    group_with_members["memberDetails"] = member_details
+    
+    return {"group": group_with_members}
+
+
+@router.get("/{group_id}/members", response_model=dict)
+def get_group_members(group_id: str, token: dict = Depends(verify_token)):
+    """
+    Get list of members in a group with their details
+    
+    - Must be a member to view
+    - Returns member usernames, emails, and roles
+    """
+    user_id = token["sub"]
+    
+    # Get group
+    group = groups.get_group(group_id)
+    if not group:
+        raise HTTPException(404, "Group not found")
+    
+    # Check membership
+    if not groups.is_member(group_id, user_id):
+        raise HTTPException(403, "You are not a member of this group")
+    
+    # Fetch member details
+    member_details = []
+    for member_id in group.get("members", []):
+        member = users.get_user_by_id(member_id)
+        if member:
+            member_details.append({
+                "userId": member.get("userID"),
+                "username": member.get("username"),
+                "email": member.get("email"),
+                "role": member.get("role", "member"),
+                "status": member.get("status", "active"),
+                "createdAt": member.get("createdAt"),
+                "isOwner": member.get("userID") == group.get("createdBy")
+            })
+    
+    return {
+        "members": member_details,
+        "count": len(member_details),
+        "groupId": group_id,
+        "groupName": group.get("name")
+    }
 
 
 @router.post("/{group_id}/members", response_model=dict)
@@ -147,8 +206,15 @@ def remove_member(
     if user_id_to_remove == group["createdBy"]:
         raise HTTPException(400, "Cannot remove the group owner")
     
-    # Remove member
+    # Check if user is actually a member
+    if not groups.is_member(group_id, user_id_to_remove):
+        raise HTTPException(404, "User is not a member of this group")
+    
+    # Remove member from group
     groups.remove_member(group_id, user_id_to_remove)
+    
+    # Remove group from user's groups list
+    users.remove_group_from_user(user_id_to_remove, group_id)
     
     return {"message": "Member removed successfully"}
 

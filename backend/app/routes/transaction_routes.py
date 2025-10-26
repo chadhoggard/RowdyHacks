@@ -5,7 +5,7 @@ Handles transaction proposals and voting
 from fastapi import APIRouter, HTTPException, Depends, Query
 from ..models import TransactionCreate, TransactionVote, VoteResponse
 from ..auth import verify_token
-from ..db import transactions, groups
+from ..db import transactions, groups, users
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
@@ -139,7 +139,6 @@ def vote_on_transaction(
     if approve_count > threshold:
         new_status = "approved"
         transactions.update_status(transaction_id, "approved")
-        # TODO: Execute transaction (update balance)
     elif reject_count > threshold:
         new_status = "rejected"
         transactions.update_status(transaction_id, "rejected")
@@ -152,3 +151,94 @@ def vote_on_transaction(
         rejectCount=reject_count,
         totalMembers=total_members
     )
+
+
+@router.post("/{transaction_id}/execute", response_model=dict)
+def execute_transaction(transaction_id: str, token: dict = Depends(verify_token)):
+    """
+    Execute an approved transaction
+    
+    - Transaction must be in "approved" status
+    - Deducts amount from group balance
+    - Updates transaction status to "executed"
+    - Must be a member of the group
+    """
+    user_id = token["sub"]
+    
+    # Get transaction
+    transaction = transactions.get_transaction(transaction_id)
+    if not transaction:
+        raise HTTPException(404, "Transaction not found")
+    
+    group_id = transaction["groupID"]
+    
+    # Get group
+    group = groups.get_group(group_id)
+    if not group:
+        raise HTTPException(404, "Group not found")
+    
+    # Check membership
+    if not groups.is_member(group_id, user_id):
+        raise HTTPException(403, "You are not a member of this group")
+    
+    # Check if transaction is approved
+    if transaction["status"] != "approved":
+        raise HTTPException(400, f"Transaction must be approved to execute (current status: {transaction['status']})")
+    
+    # Check if already executed
+    if transaction.get("executedAt"):
+        raise HTTPException(400, "Transaction has already been executed")
+    
+    # Get current balance
+    current_balance = float(group.get("balance", 0))
+    transaction_amount = float(transaction["amount"])
+    
+    # Check if sufficient funds
+    if current_balance < transaction_amount:
+        raise HTTPException(400, f"Insufficient funds (balance: ${current_balance}, required: ${transaction_amount})")
+    
+    # Execute: Update balance (negative amount to deduct)
+    groups.update_balance(group_id, -transaction_amount)
+    new_balance = current_balance - transaction_amount
+    
+    # Mark transaction as executed
+    transactions.update_status(transaction_id, "executed")
+    
+    return {
+        "message": "Transaction executed successfully",
+        "transactionId": transaction_id,
+        "amount": transaction_amount,
+        "previousBalance": current_balance,
+        "newBalance": new_balance,
+        "status": "executed"
+    }
+
+
+@router.get("/history/me", response_model=dict)
+def get_my_transaction_history(token: dict = Depends(verify_token)):
+    """
+    Get transaction history for current user across all their groups
+    
+    Returns all transactions from groups the user is a member of,
+    sorted by date (newest first)
+    """
+    user_id = token["sub"]
+    
+    # Get user's groups
+    user_group_ids = users.get_user_groups(user_id)
+    
+    if not user_group_ids:
+        return {
+            "transactions": [],
+            "count": 0,
+            "message": "No groups found"
+        }
+    
+    # Get all transactions from user's groups
+    history = transactions.get_user_transaction_history(user_group_ids)
+    
+    return {
+        "transactions": history,
+        "count": len(history),
+        "groups": user_group_ids
+    }

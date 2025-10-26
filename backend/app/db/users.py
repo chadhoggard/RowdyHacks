@@ -86,6 +86,23 @@ def add_group_to_user(user_id: str, group_id: str):
     )
 
 
+def remove_group_from_user(user_id: str, group_id: str):
+    """Remove a group ID from user's groups list"""
+    user = get_user_by_id(user_id)
+    if not user:
+        return
+    
+    groups = user.get("groups", [])
+    if group_id in groups:
+        groups.remove(group_id)
+        users_table.update_item(
+            Key={USER_PK_ATTR: user_id},
+            UpdateExpression="SET #groups = :groups",
+            ExpressionAttributeNames={"#groups": "groups"},
+            ExpressionAttributeValues={":groups": groups}
+        )
+
+
 def get_user_groups(user_id: str) -> list:
     """Get list of group IDs user belongs to"""
     user = get_user_by_id(user_id)
