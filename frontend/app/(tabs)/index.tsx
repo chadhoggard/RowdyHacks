@@ -3,8 +3,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
 import React from 'react';
-// Dimensions is imported, as in your example
-import { FlatList, Image, ImageBackground, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { Dimensions, FlatList, Image, ImageBackground, StyleSheet, TouchableOpacity } from 'react-native';
 
 interface Ranch {
   id: string;
@@ -13,10 +12,17 @@ interface Ranch {
   members: string[];
 }
 
+// Helper function to generate mock return data
+const getMockReturn = (id: string, balance: number) => {
+  const percent = (3 + parseInt(id)) / 100; // e.g., 4%, 5%, 6%, 7%
+  const amount = balance * percent;
+  const percentString = (percent * 100).toFixed(1);
+  return `+$${amount.toLocaleString()} (${percentString}%)`;
+};
+
 export default function HomeScreen() {
   const router = useRouter();
 
-  // Mock ranch data (with your new 4th ranch)
   const ranches: Ranch[] = [
     { id: '1', name: 'Area 51 Ranch', balance: 5000, members: ['Alice', 'Bob', 'Charlie'] },
     { id: '2', name: 'Rodeo Investors', balance: 10000, members: ['Dave', 'Eve', 'Frank', 'Grace', 'Heidi'] },
@@ -52,42 +58,50 @@ export default function HomeScreen() {
         <ThemedText type="subtitle">Yeehaw! Partner Up and Invest Together!</ThemedText>
       </ThemedView>
 
-      {/* Ranches grid (as per your new code) */}
+      {/* Ranches grid */}
       <ThemedView style={styles.sectionContainer}>
         <ThemedText type="subtitle">YOUR RANCHES</ThemedText>
         <FlatList
           data={ranches}
           keyExtractor={(item) => item.id}
-          numColumns={2} // Creates the 2-column layout
-          columnWrapperStyle={styles.row} // Styles the row container
-          contentContainerStyle={{ paddingBottom: 16 }}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
+          contentContainerStyle={{ paddingBottom: 16, paddingTop: 12 }} // Keep padding for glow
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={styles.ranchCard} // Static styles with glow
+              style={styles.ranchCard}
               onPress={() => handlePressRanch(item)}
-              activeOpacity={0.8} // Responsiveness from TouchableOpacity
+              activeOpacity={0.8}
             >
               <ThemedText type="subtitle">{item.name}</ThemedText>
               <ThemedText>Balance: ${item.balance.toLocaleString()}</ThemedText>
               <ThemedText>Members: {Array.isArray(item.members) ? item.members.length : item.members}</ThemedText>
+              
+              {/* --- CHANGE: Monthly Return added here --- */}
+              <ThemedText style={styles.returnText}>
+                📈 {getMockReturn(item.id, item.balance)}
+              </ThemedText>
+
             </TouchableOpacity>
           )}
         />
       </ThemedView>
+
+      {/* --- SECTION REMOVED ---
+        The separate "MONTHLY RETURN" list was here. I've removed it.
+      --- END OF REMOVAL --- */}
 
       {/* Tip / guidance */}
       <ThemedView style={styles.sectionContainer}>
         <ThemedText type="subtitle">Tip</ThemedText>
         <ThemedText>
           Tap a ranch to view details and manage investments.
-        </ThemedText> 
-        {/* ^^^ TYPO FIX: Was </TheDText> before */}
+        </ThemedText>
       </ThemedView>
     </ParallaxScrollView>
   );
 }
 
-// Kept Dimensions import as in your example
 const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
@@ -101,19 +115,21 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 16,
   },
-  // Style for the row wrapper in the 2-column grid
   row: {
     justifyContent: 'space-between',
     marginBottom: 12,
   },
   ranchCard: {
-    flex: 1, // Makes each card take up equal space in the row
-    marginHorizontal: 4, // Adds spacing between the cards
+    flex: 1,
+    marginHorizontal: 4,
     padding: 16,
     backgroundColor: '#1D1F33',
     borderRadius: 12,
-    alignItems: 'center', // Centers text
+    alignItems: 'center',
     
+    minHeight: 150, // Increased minHeight slightly to fit new text
+    justifyContent: 'center',
+
     // --- Static Glow (iOS ONLY) ---
     shadowColor: '#FFA500',
     shadowOffset: { width: 0, height: 0 },
@@ -137,4 +153,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  // --- UPDATED/KEPT STYLE for inline return text ---
+  returnText: {
+    color: '#32CD32', // Bright green
+    fontWeight: 'bold',
+    marginTop: 8, // Adds space between members and return
+  },
+  // --- REMOVED STYLES: returnCard, returnLabel, returnIcon are no longer needed ---
 });
