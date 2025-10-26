@@ -426,18 +426,19 @@ const styles = StyleSheet.create({
   },
   balanceRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     alignItems: "center",
     width: "100%",
     paddingHorizontal: 4,
   },
-  balanceLabel: {
-    fontSize: 14,
-    color: "#9CA3AF",
-  },
   balanceText: {
     fontSize: 14,
     fontWeight: "600",
+    marginLeft: "auto", // This pushes the amount to the right while keeping it closer
+  },
+  balanceLabel: {
+    fontSize: 14,
+    color: "#9CA3AF",
   },
   memberCount: {
     fontSize: 14,
