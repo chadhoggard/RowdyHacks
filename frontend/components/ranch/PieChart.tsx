@@ -1,8 +1,8 @@
-import React from "react";
-import { View, StyleSheet } from "react-native";
-import Svg, { G, Path } from "react-native-svg";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import React from "react";
+import { StyleSheet, View } from "react-native";
+import Svg, { G, Path } from "react-native-svg";
 
 interface PieChartProps {
   ranchBalance: number;

@@ -1,7 +1,7 @@
-import React from "react";
-import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import React from "react";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { Transaction } from "./types";
 
 interface ProposalCardProps {
