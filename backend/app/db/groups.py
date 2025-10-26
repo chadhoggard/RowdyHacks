@@ -5,6 +5,7 @@ CRUD functions for Groups table
 import datetime
 import uuid
 from decimal import Decimal
+from botocore.exceptions import ClientError
 from .connection import groups_table
 from .users import add_group_to_user, get_user_groups, remove_group_from_user
 
@@ -31,7 +32,8 @@ def create_group(owner_id: str, name: str) -> dict:
         "balance": Decimal('0'),
         "investedAmount": Decimal('0'),
         "status": "active",
-        "memberCount": 1
+        # store as Decimal to stay compatible with DynamoDB number types
+        "memberCount": Decimal(1)
     }
     
     groups_table.put_item(Item=item)
@@ -46,54 +48,65 @@ def get_group(group_id: str) -> dict:
 
 def add_member(group_id: str, user_id: str):
     """Add a member to the group"""
-    # Avoid adding duplicates
-    if is_member(group_id, user_id):
-        return True
-
-    try:
-        # Append to members list and increment memberCount atomically
-        groups_table.update_item(
-            Key={"groupID": group_id},
-            UpdateExpression="SET members = list_append(if_not_exists(members, :empty_list), :new_member) ADD memberCount :inc",
-            ExpressionAttributeValues={
-                ":new_member": [user_id],
-                ":empty_list": [],
-                # use Decimal for numeric values to be compatible with DynamoDB number type
-                ":inc": Decimal(1)
-            }
-        )
-
-        # Also add the group to the user's record if not already present
-        try:
-            user_groups = get_user_groups(user_id)
-            if group_id not in user_groups:
-                add_group_to_user(user_id, group_id)
-        except Exception as ue:
-            # If updating the user fails, rollback the group change to keep data consistent
-            try:
-                current_group = get_group(group_id)
-                if current_group:
-                    members = current_group.get("members", [])
-                    if user_id in members:
-                        members.remove(user_id)
-                        groups_table.update_item(
-                            Key={"groupID": group_id},
-                            UpdateExpression="SET members = :members, memberCount = :count",
-                            ExpressionAttributeValues={
-                                ":members": members,
-                                ":count": Decimal(len(members))
-                            }
-                        )
-            except Exception:
-                # If rollback also fails, log and surface the original error
-                print("Failed to rollback member addition after user update failure")
-            print(f"Error updating user record when adding group: {ue}")
+    max_retries = 3
+    for attempt in range(max_retries):
+        group = get_group(group_id)
+        if not group:
+            print(f"Group {group_id} not found")
             return False
 
-        return True
-    except Exception as e:
-        print(f"Error adding member: {e}")
-        return False
+        members = group.get("members", [])
+        if user_id in members:
+            return True
+
+        new_members = members + [user_id]
+        new_count = Decimal(len(new_members))
+
+        try:
+            groups_table.update_item(
+                Key={"groupID": group_id},
+                UpdateExpression="SET members = :members, memberCount = :count",
+                ConditionExpression="attribute_not_exists(members) OR NOT contains(members, :user_id)",
+                ExpressionAttributeValues={
+                    ":members": new_members,
+                    ":count": new_count,
+                    ":user_id": user_id
+                }
+            )
+
+            # Update user record
+            try:
+                user_groups = get_user_groups(user_id)
+                if group_id not in user_groups:
+                    add_group_to_user(user_id, group_id)
+            except Exception as ue:
+                # rollback group change
+                try:
+                    groups_table.update_item(
+                        Key={"groupID": group_id},
+                        UpdateExpression="SET members = :members, memberCount = :count",
+                        ExpressionAttributeValues={
+                            ":members": members,
+                            ":count": Decimal(len(members))
+                        }
+                    )
+                except Exception:
+                    print("Failed to rollback member addition after user update failure")
+                print(f"Error updating user record when adding group: {ue}")
+                return False
+
+            return True
+        except ClientError as ce:
+            code = ce.response.get("Error", {}).get("Code")
+            if code == "ConditionalCheckFailedException":
+                # retry on concurrent modification
+                if attempt < max_retries - 1:
+                    continue
+                print("Failed to add member due to concurrent updates")
+                return False
+            print(f"Error adding member: {ce}")
+            return False
+    return False
 
 
 def remove_member(group_id: str, user_id: str):

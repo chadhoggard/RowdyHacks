@@ -18,7 +18,7 @@ TRANSACTIONS_TABLE = os.getenv("TRANSACTIONS_TABLE", "Transactions")
 INVITES_TABLE = os.getenv("INVITES_TABLE", "Invites")
 
 # User Table Attributes
-USER_PK_ATTR = os.getenv("USER_PK_ATTR", "userId")
+USER_PK_ATTR = os.getenv("USER_PK_ATTR", "userID")
 
 # Authentication
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-in-prod")
