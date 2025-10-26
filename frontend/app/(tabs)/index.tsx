@@ -81,6 +81,8 @@ export default function HomeScreen() {
         },
       });
 
+      console.log('📡 Response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
         console.log('📦 User data:', data);
@@ -100,6 +102,8 @@ export default function HomeScreen() {
         }
       } else {
         console.error('❌ Failed to fetch ranches:', response.status);
+        const errorText = await response.text();
+        console.error('❌ Error details:', errorText);
       }
     } catch (error) {
       console.error('❌ Error fetching ranches:', error);

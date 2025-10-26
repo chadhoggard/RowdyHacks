@@ -134,9 +134,18 @@ export default function LoginScreen() {
       if (response.ok) {
         const data = await response.json();
         console.log('✅ Signup successful:', data);
-        Alert.alert('Success! 🎉', 'Account created! Please log in.', [
-          { text: 'OK', onPress: () => setIsSignup(false) }
-        ]);
+        
+        // Store auth credentials (backend returns token on signup)
+        await storeData('authToken', data.token);
+        await storeData('userId', data.userId);
+        await storeData('username', data.username);
+        
+        console.log('✅ Credentials stored, navigating to app...');
+        
+        // Navigate immediately
+        router.replace('/(tabs)');
+        console.log('✅ Navigation complete');
+        
         setPassword('');
         setConfirmPassword('');
       } else {
