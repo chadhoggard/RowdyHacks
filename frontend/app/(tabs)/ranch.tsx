@@ -477,17 +477,18 @@ export default function RanchScreen() {
 
       if (response.ok) {
         console.log("✅ Deposit successful");
-        // Update personal balance (subtract deposited amount)
-        setPersonalBalance((prev) => prev - amount);
+        const data = await response.json();
+        // Update personal balance from backend response
+        if (data.userBalance !== undefined) {
+          setPersonalBalance(data.userBalance);
+        }
         // Close modal and refresh
         setDepositAmount("");
         setDepositModalVisible(false);
         await fetchGroupData();
         Alert.alert(
           "Success! 💰",
-          `Deposited $${amount.toLocaleString()} into ${name}. Your new balance is $${(
-            personalBalance - amount
-          ).toLocaleString()}.`
+          `Deposited $${amount.toLocaleString()} into ${name}. Your new balance is $${data.userBalance?.toLocaleString() || '...'}.`
         );
       } else {
         const error = await response.json();
@@ -718,7 +719,7 @@ export default function RanchScreen() {
               </View>
             </View>
             <ThemedText style={styles.personalBalance}>
-              Your Total Invested: ${personalBalance.toLocaleString()}
+              💰 Your Available Balance: ${personalBalance.toLocaleString()}
             </ThemedText>
           </ThemedView>
 

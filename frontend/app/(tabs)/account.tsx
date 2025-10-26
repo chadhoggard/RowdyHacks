@@ -47,8 +47,10 @@ export default function AccountScreen() {
   const [userId, setUserId] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [balance, setBalance] = useState(0);
   const [totalInvested, setTotalInvested] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [addingFunds, setAddingFunds] = useState(false);
 
   useEffect(() => {
     // Fetch user details from backend
@@ -75,6 +77,7 @@ export default function AccountScreen() {
           setUserId(data.userId || 'Not available');
           setUsername(data.username || 'Not available');
           setEmail(data.email || 'Not available');
+          setBalance(data.balance || 0);
           setTotalInvested(data.totalInvested || 0);
         } else {
           console.error('❌ Failed to fetch user details:', response.status);
@@ -94,6 +97,45 @@ export default function AccountScreen() {
 
     fetchUserDetails();
   }, []);
+
+  const handleAddFunds = async () => {
+    console.log('💰 Adding $1000 to account');
+    setAddingFunds(true);
+    
+    try {
+      const token = await getData('authToken');
+      
+      if (!token) {
+        Alert.alert('Error', 'Please log in again');
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/users/me/add-funds`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Funds added:', data);
+        setBalance(data.newBalance);
+        Alert.alert(
+          'Success! 💰',
+          `Added $1000 to your account!\n\nNew balance: $${data.newBalance.toFixed(2)}`
+        );
+      } else {
+        console.error('❌ Failed to add funds:', response.status);
+        Alert.alert('Error', 'Failed to add funds. Please try again.');
+      }
+    } catch (error) {
+      console.error('❌ Error adding funds:', error);
+      Alert.alert('Error', 'Network error occurred');
+    } finally {
+      setAddingFunds(false);
+    }
+  };
 
   const handleLogout = async () => {
     console.log('🚪 Logout button clicked');
@@ -185,6 +227,33 @@ export default function AccountScreen() {
             </View>
           </ThemedView>
 
+          {/* Balance Card */}
+          <ThemedView style={styles.balanceCard}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>💵 Account Balance</ThemedText>
+            
+            <View style={styles.balanceAmountContainer}>
+              <ThemedText style={styles.balanceAmount}>
+                ${balance.toFixed(2)}
+              </ThemedText>
+            </View>
+            
+            <TouchableOpacity 
+              onPress={handleAddFunds} 
+              style={styles.addFundsButton}
+              disabled={addingFunds}
+            >
+              {addingFunds ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <ThemedText style={styles.addFundsButtonText}>+ $1000 to Account</ThemedText>
+              )}
+            </TouchableOpacity>
+            
+            <ThemedText style={styles.balanceNote}>
+              Use this balance to deposit into your ranches
+            </ThemedText>
+          </ThemedView>
+
           {/* Investment Info Card */}
           <ThemedView style={styles.investmentCard}>
             <ThemedText type="subtitle" style={styles.sectionTitle}>💰 Investment Summary</ThemedText>
@@ -263,6 +332,53 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
+  },
+  balanceCard: {
+    backgroundColor: '#1D1F33',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  balanceAmountContainer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  balanceAmount: {
+    fontSize: 42,
+    fontWeight: 'bold',
+    color: '#3B82F6',
+    textShadowColor: 'rgba(59, 130, 246, 0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
+  addFundsButton: {
+    backgroundColor: '#10B981',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginVertical: 16,
+    alignItems: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  addFundsButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  balanceNote: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   investmentCard: {
     backgroundColor: '#1D1F33',

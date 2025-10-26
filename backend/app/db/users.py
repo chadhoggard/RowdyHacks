@@ -139,3 +139,26 @@ def update_trust_score(user_id: str, score: float):
         UpdateExpression="SET trustScore = :score",
         ExpressionAttributeValues={":score": score}
     )
+
+
+def get_user_balance(user_id: str) -> float:
+    """Get user's personal balance"""
+    user = get_user_by_id(user_id)
+    return float(user.get("balance", 0)) if user else 0.0
+
+
+def update_user_balance(user_id: str, amount: float):
+    """
+    Update user's personal balance
+    
+    Args:
+        user_id: User ID
+        amount: Amount to add (can be negative to subtract)
+    """
+    from decimal import Decimal
+    users_table.update_item(
+        Key={USER_PK_ATTR: user_id},
+        UpdateExpression="SET balance = balance + :amount",
+        ExpressionAttributeValues={":amount": Decimal(str(amount))}
+    )
+

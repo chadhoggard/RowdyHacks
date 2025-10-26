@@ -28,8 +28,10 @@ def create_group(body: GroupCreate, token: dict = Depends(verify_token)):
     users.add_group_to_user(user_id, group["groupID"])
     
     return {
-        "groupId": group["groupID"],
+        "groupID": group["groupID"],
         "name": group["name"],
+        "balance": group.get("balance", 0),
+        "members": group.get("members", []),
         "memberCount": group.get("memberCount", len(group.get("members", []))),
         "message": "Group created successfully"
     }
@@ -177,11 +179,8 @@ def add_member(
     if groups.is_member(group_id, new_member_id):
         raise HTTPException(409, "User is already a member")
     
-    # Add member to group
+    # Add member to group (this also adds the group to the user's groups list)
     groups.add_member(group_id, new_member_id)
-    
-    # Add group to user's groups list
-    users.add_group_to_user(new_member_id, group_id)
     
     return {"message": "Member added successfully"}
 
@@ -240,6 +239,7 @@ def deposit_to_group(
     
     - Must be a member
     - Amount must be positive
+    - Deducts from user's personal balance
     """
     user_id = token["sub"]
     
@@ -257,18 +257,30 @@ def deposit_to_group(
     if not groups.is_member(group_id, user_id):
         raise HTTPException(403, "You are not a member of this group")
     
-    # Update balance
+    # Check user has enough balance
+    user_balance = users.get_user_balance(user_id)
+    if user_balance < amount:
+        raise HTTPException(400, f"Insufficient funds. Your balance is ${user_balance:.2f}")
+    
+    # Deduct from user's balance
+    users.update_user_balance(user_id, -amount)
+    
+    # Add to group balance
     groups.update_balance(group_id, amount)
     
-    # Get updated group info
+    # Get updated balances
     updated_group = groups.get_group(group_id)
     liquid_balance = float(updated_group.get("balance", 0))
     invested = float(updated_group.get("investedAmount", 0))
+    new_user_balance = users.get_user_balance(user_id)
+    
+    print(f"💰 User {user_id} deposited ${amount} to group {group_id}. New user balance: ${new_user_balance}")
     
     return {
         "message": "Deposit successful",
         "amount": amount,
         "newBalance": liquid_balance,
         "investedAmount": invested,
-        "totalAssets": liquid_balance + invested
+        "totalAssets": liquid_balance + invested,
+        "userBalance": new_user_balance
     }

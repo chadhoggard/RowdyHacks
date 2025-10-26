@@ -63,6 +63,7 @@ def get_current_user(token: dict = Depends(verify_token)):
         "userId": user.get("userID"),
         "username": user.get("username"),
         "email": user.get("email"),
+        "balance": float(user.get("balance", 0)),
         "role": user.get("role", "member"),
         "status": user.get("status", "active"),
         "groups": user_groups,
@@ -158,3 +159,28 @@ def get_user_investments(token: dict = Depends(verify_token)):
         "investments": investment_details,
         "investmentCount": len(investment_details)
     }
+
+
+@router.post("/me/add-funds")
+def add_funds_to_account(token: dict = Depends(verify_token)):
+    """
+    Add $1000 to user's personal balance
+    
+    This is a demo feature to add funds that can be used to deposit into ranches
+    """
+    user_id = token["sub"]
+    
+    # Add $1000 to user's balance
+    users.update_user_balance(user_id, 1000)
+    
+    # Get updated balance
+    new_balance = users.get_user_balance(user_id)
+    
+    print(f"💰 Added $1000 to user {user_id}. New balance: ${new_balance}")
+    
+    return {
+        "message": "Successfully added $1000 to your account",
+        "newBalance": new_balance,
+        "amountAdded": 1000
+    }
+
