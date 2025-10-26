@@ -1,16 +1,28 @@
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, Platform, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import Svg, { G, Path } from 'react-native-svg';
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import * as SecureStore from "expo-secure-store";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Svg, { G, Path } from "react-native-svg";
 
-const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = "http://localhost:8080";
 
 // Platform-specific storage helpers
 const getData = async (key: string) => {
-  if (Platform.OS === 'web') {
+  if (Platform.OS === "web") {
     return localStorage.getItem(key);
   } else {
     return await SecureStore.getItemAsync(key);
@@ -23,8 +35,8 @@ interface Transaction {
   userID: string;
   amount: string;
   description: string;
-  status: 'pending' | 'approved' | 'rejected' | 'executed';
-  votes: Record<string, 'approve' | 'reject'>;
+  status: "pending" | "approved" | "rejected" | "executed";
+  votes: Record<string, "approve" | "reject">;
   createdAt: string;
 }
 
@@ -33,12 +45,18 @@ interface UserBalance {
 }
 
 // Helper function for pie chart arcs
-const createArcPath = (cx: number, cy: number, r: number, startAngle: number, endAngle: number) => {
+const createArcPath = (
+  cx: number,
+  cy: number,
+  r: number,
+  startAngle: number,
+  endAngle: number
+) => {
   const startX = cx + r * Math.cos(startAngle);
   const startY = cy + r * Math.sin(startAngle);
   const endX = cx + r * Math.cos(endAngle);
   const endY = cy + r * Math.sin(endAngle);
-  const largeArcFlag = endAngle - startAngle <= Math.PI ? '0' : '1';
+  const largeArcFlag = endAngle - startAngle <= Math.PI ? "0" : "1";
   return `M ${cx} ${cy} L ${startX} ${startY} A ${r} ${r} 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
 };
 
@@ -50,15 +68,27 @@ export default function RanchScreen() {
     members: string;
   }>();
 
-  console.log('🏠 Ranch screen loaded with params:', { id, name, balance, members });
+  console.log("🏠 Ranch screen loaded with params:", {
+    id,
+    name,
+    balance,
+    members,
+  });
 
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [ranchBalance, setRanchBalance] = useState(Number(balance)); // Liquid cash
   const [investedAmount, setInvestedAmount] = useState(0); // Locked in investments
   const [totalAssets, setTotalAssets] = useState(Number(balance)); // Total = liquid + invested
-  const [memberList, setMemberList] = useState<string[]>(members ? members.split(',') : []);
-  const [memberCount, setMemberCount] = useState(members ? members.split(',').length : 1);
+  const [memberList, setMemberList] = useState<string[]>(
+    members ? members.split(",") : []
+  );
+  const [memberProfiles, setMemberProfiles] = useState<Record<string, string>>(
+    {}
+  ); // userId -> username
+  const [memberCount, setMemberCount] = useState(
+    members ? members.split(",").length : 1
+  );
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [proposals, setProposals] = useState<Transaction[]>([]);
@@ -67,17 +97,20 @@ export default function RanchScreen() {
   // Load auth token and userId on mount
   useEffect(() => {
     const loadAuth = async () => {
-      const token = await getData('authToken');
-      const userId = await getData('userId');
-      console.log('🔐 Loaded auth:', { 
-        tokenLength: token?.length, 
-        tokenPreview: token?.substring(0, 20) + '...', 
-        userId 
+      const token = await getData("authToken");
+      const userId = await getData("userId");
+      console.log("🔐 Loaded auth:", {
+        tokenLength: token?.length,
+        tokenPreview: token?.substring(0, 20) + "...",
+        userId,
       });
       if (!token) {
-        console.error('❌ No auth token found!');
-      } else if (token.split('.').length !== 3) {
-        console.error('❌ Invalid token format! Segments:', token.split('.').length);
+        console.error("❌ No auth token found!");
+      } else if (token.split(".").length !== 3) {
+        console.error(
+          "❌ Invalid token format! Segments:",
+          token.split(".").length
+        );
       }
       setAuthToken(token);
       setCurrentUserId(userId);
@@ -88,8 +121,8 @@ export default function RanchScreen() {
   // Fetch data when auth token is loaded or when ranch ID changes
   useEffect(() => {
     if (authToken && id) {
-      console.log('✅ Auth token loaded for ranch:', id);
-      console.log('🧹 Clearing old proposals before fetching new ones');
+      console.log("✅ Auth token loaded for ranch:", id);
+      console.log("🧹 Clearing old proposals before fetching new ones");
       setProposals([]); // Clear proposals when switching ranches
       fetchGroupData();
       fetchProposals();
@@ -100,122 +133,153 @@ export default function RanchScreen() {
   // Fetch user's personal balance (total invested across all groups)
   const fetchPersonalBalance = async () => {
     if (!authToken) {
-      console.log('⚠️ No auth token yet, skipping personal balance fetch');
+      console.log("⚠️ No auth token yet, skipping personal balance fetch");
       return;
     }
     try {
-      console.log('🔍 Fetching personal balance...');
+      console.log("🔍 Fetching personal balance...");
       const response = await fetch(`${API_BASE_URL}/users/me`, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
       });
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ User data fetched:', data);
+        console.log("✅ User data fetched:", data);
         setPersonalBalance(data.totalInvested || 0);
       } else {
-        console.log('❌ Failed to fetch personal balance:', response.status);
+        console.log("❌ Failed to fetch personal balance:", response.status);
       }
     } catch (error) {
-      console.error('❌ Error fetching personal balance:', error);
+      console.error("❌ Error fetching personal balance:", error);
     }
   };
 
   const investments = [
-    { key: 'Liquid Cash', value: ranchBalance, color: '#FBBF24' },
-    { key: 'Invested', value: investedAmount, color: '#10B981' },
+    { key: "Liquid Cash", value: ranchBalance, color: "#FBBF24" },
+    { key: "Invested", value: investedAmount, color: "#10B981" },
   ];
 
   // Modals
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
-  const [availableUsers, setAvailableUsers] = useState<Array<{userId: string, username: string, email: string}>>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [manageMembersModalVisible, setManageMembersModalVisible] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<
+    Array<{ userId: string; username: string; email: string }>
+  >([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [manageMembersModalVisible, setManageMembersModalVisible] =
+    useState(false);
   const [investModalVisible, setInvestModalVisible] = useState(false);
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
   const [depositModalVisible, setDepositModalVisible] = useState(false);
-  const [transactionAmount, setTransactionAmount] = useState('');
-  const [depositAmount, setDepositAmount] = useState('');
+  const [transactionAmount, setTransactionAmount] = useState("");
+  const [depositAmount, setDepositAmount] = useState("");
 
   // Fetch updated group balance and members
   const fetchGroupData = async () => {
     if (!id) return;
     if (!authToken) {
-      console.log('⚠️ No auth token yet, skipping fetch');
+      console.log("⚠️ No auth token yet, skipping fetch");
       return;
     }
     try {
-      console.log('🔍 Fetching group data for:', id);
-      console.log('🔑 Using token length:', authToken.length);
+      console.log("🔍 Fetching group data for:", id);
+      console.log("🔑 Using token length:", authToken.length);
       const response = await fetch(`${API_BASE_URL}/groups/${id}`, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
       });
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Group data fetched:', data);
+        console.log("✅ Group data fetched:", data);
         setRanchBalance(data.group?.balance || data.balance || 0);
         setInvestedAmount(data.group?.investedAmount || 0);
-        setTotalAssets(data.group?.totalAssets || (data.group?.balance || 0));
-        setMemberList(data.group?.members || []);
-        setMemberCount(data.group?.members?.length || 0);
+        setTotalAssets(data.group?.totalAssets || data.group?.balance || 0);
+        const membersArr: string[] = data.group?.members || [];
+        setMemberList(membersArr);
+        setMemberCount(membersArr.length || 0);
+
+        // Fetch usernames for these members (uses /users/all which returns basic info)
+        try {
+          const usersResp = await fetch(`${API_BASE_URL}/users/all`, {
+            headers: { Authorization: `Bearer ${authToken}` },
+          });
+          if (usersResp.ok) {
+            const usersData = await usersResp.json();
+            const map: Record<string, string> = {};
+            (usersData.users || []).forEach((u: any) => {
+              map[u.userId] = u.username;
+            });
+            setMemberProfiles(map);
+          } else {
+            console.warn("Failed to fetch user profiles for members");
+          }
+        } catch (err) {
+          console.warn("Error fetching user profiles:", err);
+        }
       } else {
-        console.log('❌ Failed to fetch group data:', response.status);
+        console.log("❌ Failed to fetch group data:", response.status);
       }
     } catch (error) {
-      console.error('Failed to fetch group balance:', error);
+      console.error("Failed to fetch group balance:", error);
     }
   };
 
   // Fetch pending proposals for this group
   const fetchProposals = async () => {
     if (!id) {
-      console.log('⚠️ No group ID, skipping fetch');
+      console.log("⚠️ No group ID, skipping fetch");
       return;
     }
     if (!authToken) {
-      console.log('⚠️ No auth token yet, skipping proposals fetch');
+      console.log("⚠️ No auth token yet, skipping proposals fetch");
       return;
     }
-    console.log('🔍 Fetching proposals for THIS group ONLY:', id);
+    console.log("🔍 Fetching proposals for THIS group ONLY:", id);
     try {
       const url = `${API_BASE_URL}/transactions?groupId=${id}`;
-      console.log('🌐 Fetching from:', url);
+      console.log("🌐 Fetching from:", url);
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
       });
-      console.log('📡 Proposals response status:', response.status);
+      console.log("📡 Proposals response status:", response.status);
       if (response.ok) {
         const data = await response.json();
-        console.log('📦 Raw response data:', data);
-        
+        console.log("📦 Raw response data:", data);
+
         // Filter to only show transactions for THIS specific group
         const thisGroupTransactions = (data.transactions || []).filter(
           (txn: Transaction) => txn.groupID === id
         );
-        
-        console.log(`✅ Total transactions received: ${data.transactions?.length || 0}`);
-        console.log(`✅ Transactions for THIS group (${id}): ${thisGroupTransactions.length}`);
-        console.log('✅ Setting proposals to:', thisGroupTransactions);
-        
+
+        console.log(
+          `✅ Total transactions received: ${data.transactions?.length || 0}`
+        );
+        console.log(
+          `✅ Transactions for THIS group (${id}): ${thisGroupTransactions.length}`
+        );
+        console.log("✅ Setting proposals to:", thisGroupTransactions);
+
         setProposals(thisGroupTransactions);
       } else {
         const errorText = await response.text();
-        console.log('❌ Error response:', errorText);
+        console.log("❌ Error response:", errorText);
       }
     } catch (error) {
-      console.error('❌ Failed to fetch proposals:', error);
+      console.error("❌ Failed to fetch proposals:", error);
     }
   };
 
   // Refresh all data
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchGroupData(), fetchProposals(), fetchPersonalBalance()]);
+    await Promise.all([
+      fetchGroupData(),
+      fetchProposals(),
+      fetchPersonalBalance(),
+    ]);
     setRefreshing(false);
   };
 
@@ -230,240 +294,256 @@ export default function RanchScreen() {
 
   // Log proposals whenever they change
   useEffect(() => {
-    console.log('🎯 Proposals updated:', proposals.length, 'proposals', proposals);
+    console.log(
+      "🎯 Proposals updated:",
+      proposals.length,
+      "proposals",
+      proposals
+    );
   }, [proposals]);
 
   const handleInvest = () => setInvestModalVisible(true);
-  
+
   const handleInvestSubmit = async () => {
-    console.log('🔵 handleInvestSubmit called');
-    console.log('Transaction amount:', transactionAmount);
-    
+    console.log("🔵 handleInvestSubmit called");
+    console.log("Transaction amount:", transactionAmount);
+
     if (!authToken) {
-      console.error('❌ No auth token available');
-      Alert.alert('Error', 'Not authenticated. Please log in again.');
+      console.error("❌ No auth token available");
+      Alert.alert("Error", "Not authenticated. Please log in again.");
       return;
     }
-    
+
     if (!id) {
-      console.error('❌ No group ID available');
-      Alert.alert('Error', 'Ranch ID is missing. Please try again.');
+      console.error("❌ No group ID available");
+      Alert.alert("Error", "Ranch ID is missing. Please try again.");
       return;
     }
-    
+
     const amount = parseFloat(transactionAmount);
-    console.log('Parsed amount:', amount);
-    
+    console.log("Parsed amount:", amount);
+
     if (!amount || amount <= 0) {
-      console.log('❌ Invalid amount');
-      Alert.alert('Invalid Amount', 'Please enter a valid positive amount');
+      console.log("❌ Invalid amount");
+      Alert.alert("Invalid Amount", "Please enter a valid positive amount");
       return;
     }
 
     // Check if user has enough personal balance
     if (amount > personalBalance) {
-      console.log('❌ Insufficient funds');
+      console.log("❌ Insufficient funds");
       Alert.alert(
-        'Insufficient Funds',
+        "Insufficient Funds",
         `You don't have enough to invest $${amount.toLocaleString()}. Your available balance is $${personalBalance.toLocaleString()}.`
       );
       return;
     }
 
-    console.log('✅ Validation passed, making API call');
-    console.log('🔑 Using auth token length:', authToken?.length);
-    console.log('🏠 Group ID:', id);
+    console.log("✅ Validation passed, making API call");
+    console.log("🔑 Using auth token length:", authToken?.length);
+    console.log("🏠 Group ID:", id);
     setLoading(true);
     try {
       // Create a transaction proposal (not direct deposit)
       const response = await fetch(`${API_BASE_URL}/transactions`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           groupId: id,
           amount: amount,
-          description: `Investment proposal: $${amount.toLocaleString()}`
+          description: `Investment proposal: $${amount.toLocaleString()}`,
         }),
       });
 
-      console.log('📡 Response status:', response.status);
+      console.log("📡 Response status:", response.status);
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Success:', data);
-        
+        console.log("✅ Success:", data);
+
         // Close modal and clear input FIRST
-        setTransactionAmount('');
+        setTransactionAmount("");
         setInvestModalVisible(false);
-        
+
         // Then fetch proposals
-        console.log('🔄 Fetching proposals after creation...');
+        console.log("🔄 Fetching proposals after creation...");
         await fetchProposals();
-        
+
         // Then show success message
         Alert.alert(
-          '🎉 Proposal Created!', 
+          "🎉 Proposal Created!",
           `Your investment proposal of $${amount.toLocaleString()} has been submitted. Other members need to approve it before funds are added.`
         );
       } else {
         const error = await response.json();
-        console.error('❌ API error:', error);
-        Alert.alert('Error', error.detail || 'Failed to create proposal');
+        console.error("❌ API error:", error);
+        Alert.alert("Error", error.detail || "Failed to create proposal");
       }
     } catch (error) {
-      console.log('❌ Network error:', error);
-      Alert.alert('Error', 'Network error occurred');
+      console.log("❌ Network error:", error);
+      Alert.alert("Error", "Network error occurred");
     } finally {
       setLoading(false);
     }
   };
 
   const handleWithdraw = () => setWithdrawModalVisible(true);
-  
+
   const handleWithdrawSubmit = async () => {
     const amount = parseFloat(transactionAmount);
     if (!amount || amount <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid positive amount');
+      Alert.alert("Invalid Amount", "Please enter a valid positive amount");
       return;
     }
 
     if (amount > ranchBalance) {
-      Alert.alert('Insufficient Balance', `Cannot withdraw $${amount.toLocaleString()}. Ranch balance is only $${ranchBalance.toLocaleString()}`);
+      Alert.alert(
+        "Insufficient Balance",
+        `Cannot withdraw $${amount.toLocaleString()}. Ranch balance is only $${ranchBalance.toLocaleString()}`
+      );
       return;
     }
 
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/groups/${id}/deposit`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ amount: -amount }), // Negative amount for withdrawal
       });
 
       if (response.ok) {
-        Alert.alert('Success! 💰', `Withdrew $${amount.toLocaleString()} from ${name}`);
-        setTransactionAmount('');
+        Alert.alert(
+          "Success! 💰",
+          `Withdrew $${amount.toLocaleString()} from ${name}`
+        );
+        setTransactionAmount("");
         setWithdrawModalVisible(false);
         await fetchGroupData();
       } else {
         const error = await response.json();
-        Alert.alert('Error', error.detail || 'Failed to withdraw');
+        Alert.alert("Error", error.detail || "Failed to withdraw");
       }
     } catch (error) {
-      Alert.alert('Error', 'Network error occurred');
+      Alert.alert("Error", "Network error occurred");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = () => Alert.alert('Delete Ranch', `Are you sure you want to delete ${name}?`);
-  
+  const handleDelete = () =>
+    Alert.alert("Delete Ranch", `Are you sure you want to delete ${name}?`);
+
   const handleDeposit = () => setDepositModalVisible(true);
-  
+
   const handleDepositSubmit = async () => {
-    console.log('💵 handleDepositSubmit called');
+    console.log("💵 handleDepositSubmit called");
     const amount = parseFloat(depositAmount);
-    console.log('Deposit amount:', amount);
-    
+    console.log("Deposit amount:", amount);
+
     if (!amount || amount <= 0) {
-      console.log('❌ Invalid deposit amount');
-      Alert.alert('Invalid Amount', 'Please enter a valid positive amount');
+      console.log("❌ Invalid deposit amount");
+      Alert.alert("Invalid Amount", "Please enter a valid positive amount");
       return;
     }
 
     // Check if user has enough personal balance
     if (amount > personalBalance) {
-      console.log('❌ Insufficient personal funds');
+      console.log("❌ Insufficient personal funds");
       Alert.alert(
-        'Insufficient Funds',
+        "Insufficient Funds",
         `You don't have enough to deposit $${amount.toLocaleString()}. Your available balance is $${personalBalance.toLocaleString()}.`
       );
       return;
     }
 
-    console.log('✅ Deposit validation passed, making API call');
+    console.log("✅ Deposit validation passed, making API call");
     setLoading(true);
     try {
       // Direct deposit to ranch balance
       const response = await fetch(`${API_BASE_URL}/groups/${id}/deposit`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ amount: amount }), // Positive amount for deposit
       });
 
       if (response.ok) {
-        console.log('✅ Deposit successful');
+        console.log("✅ Deposit successful");
         // Update personal balance (subtract deposited amount)
-        setPersonalBalance(prev => prev - amount);
+        setPersonalBalance((prev) => prev - amount);
         // Close modal and refresh
-        setDepositAmount('');
+        setDepositAmount("");
         setDepositModalVisible(false);
         await fetchGroupData();
         Alert.alert(
-          'Success! 💰',
-          `Deposited $${amount.toLocaleString()} into ${name}. Your new balance is $${(personalBalance - amount).toLocaleString()}.`
+          "Success! 💰",
+          `Deposited $${amount.toLocaleString()} into ${name}. Your new balance is $${(
+            personalBalance - amount
+          ).toLocaleString()}.`
         );
       } else {
         const error = await response.json();
-        console.log('❌ Deposit error response:', error);
-        Alert.alert('Error', error.detail || 'Failed to deposit');
+        console.log("❌ Deposit error response:", error);
+        Alert.alert("Error", error.detail || "Failed to deposit");
       }
     } catch (error) {
-      console.log('❌ Deposit network error:', error);
-      Alert.alert('Error', 'Network error occurred');
+      console.log("❌ Deposit network error:", error);
+      Alert.alert("Error", "Network error occurred");
     } finally {
       setLoading(false);
     }
   };
-  
+
   // Fetch all available users when opening invite modal
   const handleInvite = async () => {
     setLoading(true);
     try {
       // First, fetch the latest group data to get current members
-      console.log('🔄 Refreshing group data before fetching users...');
+      console.log("🔄 Refreshing group data before fetching users...");
       await fetchGroupData();
-      
-      console.log('👥 Fetching all users...');
+
+      console.log("👥 Fetching all users...");
       const response = await fetch(`${API_BASE_URL}/users/all`, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Users fetched:', data.users.length);
-        console.log('👥 All users:', data.users);
-        console.log('📋 Current memberList:', memberList);
-        console.log('👤 Current user ID:', currentUserId);
-        
+        console.log("✅ Users fetched:", data.users.length);
+        console.log("👥 All users:", data.users);
+        console.log("📋 Current memberList:", memberList);
+        console.log("👤 Current user ID:", currentUserId);
+
         // Filter out users who are already members
         const nonMembers = data.users.filter((user: any) => {
           const isAlreadyMember = memberList.includes(user.userId);
           const isCurrentUser = user.userId === currentUserId;
-          console.log(`🔍 Checking ${user.username}: isAlreadyMember=${isAlreadyMember}, isCurrentUser=${isCurrentUser}`);
+          console.log(
+            `🔍 Checking ${user.username}: isAlreadyMember=${isAlreadyMember}, isCurrentUser=${isCurrentUser}`
+          );
           return !isAlreadyMember && !isCurrentUser;
         });
-        
-        console.log('✅ Available users after filtering:', nonMembers);
+
+        console.log("✅ Available users after filtering:", nonMembers);
         setAvailableUsers(nonMembers);
         setInviteModalVisible(true);
       } else {
-        console.error('❌ Failed to fetch users');
-        Alert.alert('Error', 'Failed to load users');
+        console.error("❌ Failed to fetch users");
+        Alert.alert("Error", "Failed to load users");
       }
     } catch (error) {
-      console.error('❌ Network error:', error);
-      Alert.alert('Error', 'Network error occurred');
+      console.error("❌ Network error:", error);
+      Alert.alert("Error", "Network error occurred");
     } finally {
       setLoading(false);
     }
@@ -472,18 +552,18 @@ export default function RanchScreen() {
   // Add selected user to the group
   const handleAddMember = async () => {
     if (!selectedUserId) {
-      Alert.alert('Error', 'Please select a user');
+      Alert.alert("Error", "Please select a user");
       return;
     }
 
-    console.log('➕ Adding member:', selectedUserId);
+    console.log("➕ Adding member:", selectedUserId);
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/groups/${id}/members`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           userId: selectedUserId,
@@ -491,724 +571,910 @@ export default function RanchScreen() {
       });
 
       if (response.ok) {
-        console.log('✅ Member added');
-        const selectedUser = availableUsers.find(u => u.userId === selectedUserId);
+        console.log("✅ Member added");
+        const selectedUser = availableUsers.find(
+          (u) => u.userId === selectedUserId
+        );
         Alert.alert(
-          'Member Added! 🎉',
+          "Member Added! 🎉",
           `${selectedUser?.username} has been added to ${name}`
         );
-        setSelectedUserId('');
+        setSelectedUserId("");
         setInviteModalVisible(false);
         await fetchGroupData(); // Refresh member list
       } else {
         const error = await response.json();
-        console.error('❌ Add member error:', error);
-        if (error.detail === 'User is already a member') {
-          Alert.alert('Already a Member', 'This user is already in the ranch');
+        console.error("❌ Add member error:", error);
+        if (error.detail === "User is already a member") {
+          Alert.alert("Already a Member", "This user is already in the ranch");
         } else {
-          Alert.alert('Error', error.detail || 'Failed to add member');
+          Alert.alert("Error", error.detail || "Failed to add member");
         }
       }
     } catch (error) {
-      console.error('❌ Network error:', error);
-      Alert.alert('Error', 'Network error occurred');
+      console.error("❌ Network error:", error);
+      Alert.alert("Error", "Network error occurred");
     } finally {
       setLoading(false);
     }
   };
 
   const handleKickMember = (member: string) => {
-    Alert.alert('Kick Member', `Kicked ${member} from the ranch`);
-    setMemberList(memberList.filter(m => m !== member));
+    Alert.alert("Kick Member", `Kicked ${member} from the ranch`);
+    setMemberList(memberList.filter((m) => m !== member));
   };
 
   const handlePromoteMember = (member: string) => {
-    Alert.alert('Promote Member', `${member} is now an admin!`);
+    Alert.alert("Promote Member", `${member} is now an admin!`);
   };
 
   // Vote on a proposal
-  const handleVote = async (transactionId: string, vote: 'approve' | 'reject') => {
+  const handleVote = async (
+    transactionId: string,
+    vote: "approve" | "reject"
+  ) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/transactions/${transactionId}/vote`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ vote }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/transactions/${transactionId}/vote`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ vote }),
+        }
+      );
 
       if (response.ok) {
-        Alert.alert('Vote Recorded', `You voted to ${vote} this proposal`);
+        Alert.alert("Vote Recorded", `You voted to ${vote} this proposal`);
         await fetchProposals(); // Refresh proposals
         await fetchGroupData(); // Refresh balance in case it auto-executed
       } else {
         const error = await response.json();
-        Alert.alert('Error', error.detail || 'Failed to vote');
+        Alert.alert("Error", error.detail || "Failed to vote");
       }
     } catch (error) {
-      Alert.alert('Error', 'Network error occurred');
+      Alert.alert("Error", "Network error occurred");
     }
   };
 
   // Execute an approved proposal
   const handleExecute = async (transactionId: string) => {
     if (!authToken) {
-      Alert.alert('Error', 'Not authenticated. Please log in again.');
+      Alert.alert("Error", "Not authenticated. Please log in again.");
       return;
     }
-    
+
     try {
-      console.log('⚡ Executing transaction:', transactionId);
-      const response = await fetch(`${API_BASE_URL}/transactions/${transactionId}/execute`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
-      });
+      console.log("⚡ Executing transaction:", transactionId);
+      const response = await fetch(
+        `${API_BASE_URL}/transactions/${transactionId}/execute`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ Transaction executed:', result);
-        Alert.alert('Success! 🎉', 'Transaction executed successfully!');
+        console.log("✅ Transaction executed:", result);
+        Alert.alert("Success! 🎉", "Transaction executed successfully!");
         await fetchProposals();
         await fetchGroupData();
         await fetchPersonalBalance(); // Update personal balance after execution
       } else {
         const error = await response.json();
-        console.error('❌ Execute failed:', error);
-        Alert.alert('Error', error.detail || 'Failed to execute');
+        console.error("❌ Execute failed:", error);
+        Alert.alert("Error", error.detail || "Failed to execute");
       }
     } catch (error) {
-      console.error('❌ Network error:', error);
-      Alert.alert('Error', 'Network error occurred');
+      console.error("❌ Network error:", error);
+      Alert.alert("Error", "Network error occurred");
     }
   };
 
   return (
     <>
-    <ScrollView 
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FBBF24" />
-      }
-    >
-      <ThemedView style={styles.contentContainer}>
-        {/* Header */}
-        <ThemedView style={styles.header}>
-          <ThemedText type="title" style={styles.headerText}>
-            🤠 {name} 🚀
-          </ThemedText>
-          <View style={styles.balanceContainer}>
-            <ThemedText type="subtitle" style={styles.totalAssetsText}>
-              Total Assets: ${totalAssets.toLocaleString()}
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#FBBF24"
+          />
+        }
+      >
+        <ThemedView style={styles.contentContainer}>
+          {/* Header */}
+          <ThemedView style={styles.header}>
+            <ThemedText type="title" style={styles.headerText}>
+              🤠 {name} 🚀
             </ThemedText>
-            <View style={styles.balanceBreakdown}>
-              <View style={styles.balanceRow}>
-                <ThemedText style={styles.balanceLabel}>💵 Liquid Cash:</ThemedText>
-                <ThemedText style={styles.balanceValue}>${ranchBalance.toLocaleString()}</ThemedText>
-              </View>
-              <View style={styles.balanceRow}>
-                <ThemedText style={styles.balanceLabel}>📈 Invested:</ThemedText>
-                <ThemedText style={styles.balanceValueInvested}>${investedAmount.toLocaleString()}</ThemedText>
+            <View style={styles.balanceContainer}>
+              <ThemedText type="subtitle" style={styles.totalAssetsText}>
+                Total Assets: ${totalAssets.toLocaleString()}
+              </ThemedText>
+              <View style={styles.balanceBreakdown}>
+                <View style={styles.balanceRow}>
+                  <ThemedText style={styles.balanceLabel}>
+                    💵 Liquid Cash:
+                  </ThemedText>
+                  <ThemedText style={styles.balanceValue}>
+                    ${ranchBalance.toLocaleString()}
+                  </ThemedText>
+                </View>
+                <View style={styles.balanceRow}>
+                  <ThemedText style={styles.balanceLabel}>
+                    📈 Invested:
+                  </ThemedText>
+                  <ThemedText style={styles.balanceValueInvested}>
+                    ${investedAmount.toLocaleString()}
+                  </ThemedText>
+                </View>
               </View>
             </View>
-          </View>
-          <ThemedText style={styles.personalBalance}>
-            Your Total Invested: ${personalBalance.toLocaleString()}
-          </ThemedText>
-        </ThemedView>
-
-        {/* Pending Proposals Section */}
-        <ThemedView style={styles.section}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            📋 Proposals ({proposals.length})
-          </ThemedText>
-          {proposals.length === 0 ? (
-            <ThemedText style={styles.emptyText}>
-              No proposals yet. Click Invest to create one!
+            <ThemedText style={styles.personalBalance}>
+              Your Total Invested: ${personalBalance.toLocaleString()}
             </ThemedText>
-          ) : (
-            proposals.map((proposal) => {
-              const voteCount = Object.keys(proposal.votes || {}).length;
-              const approveCount = Object.values(proposal.votes || {}).filter(v => v === 'approve').length;
-              const rejectCount = Object.values(proposal.votes || {}).filter(v => v === 'reject').length;
-              const votesNeeded = Math.ceil(memberCount / 2);
-              const votesRemaining = Math.max(0, votesNeeded - approveCount);
-              const userVote = proposal.votes?.[currentUserId || ''];
+          </ThemedView>
 
-              // Status colors and emojis
-              const statusConfig = {
-                pending: { emoji: '⏳', color: '#FBBF24', text: 'Pending' },
-                approved: { emoji: '✓', color: '#10B981', text: 'Approved' },
-                rejected: { emoji: '✗', color: '#EF4444', text: 'Rejected' },
-                executed: { emoji: '✅', color: '#8B5CF6', text: 'Executed' },
-              };
-              const status = statusConfig[proposal.status] || statusConfig.pending;
+          {/* Pending Proposals Section */}
+          <ThemedView style={styles.section}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>
+              📋 Proposals ({proposals.length})
+            </ThemedText>
+            {proposals.length === 0 ? (
+              <ThemedText style={styles.emptyText}>
+                No proposals yet. Click Invest to create one!
+              </ThemedText>
+            ) : (
+              proposals.map((proposal) => {
+                const voteCount = Object.keys(proposal.votes || {}).length;
+                const approveCount = Object.values(proposal.votes || {}).filter(
+                  (v) => v === "approve"
+                ).length;
+                const rejectCount = Object.values(proposal.votes || {}).filter(
+                  (v) => v === "reject"
+                ).length;
+                const votesNeeded = Math.ceil(memberCount / 2);
+                const votesRemaining = Math.max(0, votesNeeded - approveCount);
+                const userVote = proposal.votes?.[currentUserId || ""];
 
-              // Debug: Log if this proposal doesn't match the current group
-              if (proposal.groupID !== id) {
-                console.warn('⚠️ MISMATCH! Proposal', proposal.transactionID, 'belongs to group', proposal.groupID, 'but showing in', id);
-              }
+                // Status colors and emojis
+                const statusConfig = {
+                  pending: { emoji: "⏳", color: "#FBBF24", text: "Pending" },
+                  approved: { emoji: "✓", color: "#10B981", text: "Approved" },
+                  rejected: { emoji: "✗", color: "#EF4444", text: "Rejected" },
+                  executed: { emoji: "✅", color: "#8B5CF6", text: "Executed" },
+                };
+                const status =
+                  statusConfig[proposal.status] || statusConfig.pending;
 
-              return (
-                <ThemedView key={proposal.transactionID} style={styles.proposalCard}>
-                  <View style={styles.proposalHeader}>
-                    <ThemedText style={styles.proposalAmount}>
-                      ${parseFloat(proposal.amount).toLocaleString()}
+                // Debug: Log if this proposal doesn't match the current group
+                if (proposal.groupID !== id) {
+                  console.warn(
+                    "⚠️ MISMATCH! Proposal",
+                    proposal.transactionID,
+                    "belongs to group",
+                    proposal.groupID,
+                    "but showing in",
+                    id
+                  );
+                }
+
+                return (
+                  <ThemedView
+                    key={proposal.transactionID}
+                    style={styles.proposalCard}
+                  >
+                    <View style={styles.proposalHeader}>
+                      <ThemedText style={styles.proposalAmount}>
+                        ${parseFloat(proposal.amount).toLocaleString()}
+                      </ThemedText>
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          { backgroundColor: status.color },
+                        ]}
+                      >
+                        <ThemedText style={styles.statusText}>
+                          {status.emoji} {status.text}
+                        </ThemedText>
+                      </View>
+                    </View>
+                    <ThemedText style={styles.proposalDescription}>
+                      {proposal.description}
                     </ThemedText>
-                    <View style={[styles.statusBadge, { backgroundColor: status.color }]}>
-                      <ThemedText style={styles.statusText}>
-                        {status.emoji} {status.text}
+
+                    <View style={styles.voteInfo}>
+                      <ThemedText style={styles.voteText}>
+                        👍 {approveCount} | 👎 {rejectCount} |
+                        {proposal.status === "pending"
+                          ? ` ${votesRemaining} more vote${
+                              votesRemaining !== 1 ? "s" : ""
+                            } needed`
+                          : proposal.status === "approved"
+                          ? " Ready to execute!"
+                          : proposal.status === "executed"
+                          ? " Funds added to ranch!"
+                          : " Not approved"}
                       </ThemedText>
                     </View>
-                  </View>
-                  <ThemedText style={styles.proposalDescription}>{proposal.description}</ThemedText>
-                  
-                  <View style={styles.voteInfo}>
-                    <ThemedText style={styles.voteText}>
-                      👍 {approveCount} | 👎 {rejectCount} | 
-                      {proposal.status === 'pending' 
-                        ? ` ${votesRemaining} more vote${votesRemaining !== 1 ? 's' : ''} needed`
-                        : proposal.status === 'approved'
-                        ? ' Ready to execute!'
-                        : proposal.status === 'executed'
-                        ? ' Funds added to ranch!'
-                        : ' Not approved'
-                      }
-                    </ThemedText>
-                  </View>
 
-                  {/* Only show voting buttons for pending proposals where user hasn't voted */}
-                  {userVote ? (
-                    <ThemedText style={styles.votedText}>
-                      You voted: {userVote === 'approve' ? '👍 Approve' : '👎 Reject'}
-                    </ThemedText>
-                  ) : proposal.status === 'pending' ? (
-                    <View style={styles.voteButtons}>
+                    {/* Only show voting buttons for pending proposals where user hasn't voted */}
+                    {userVote ? (
+                      <ThemedText style={styles.votedText}>
+                        You voted:{" "}
+                        {userVote === "approve" ? "👍 Approve" : "👎 Reject"}
+                      </ThemedText>
+                    ) : proposal.status === "pending" ? (
+                      <View style={styles.voteButtons}>
+                        <TouchableOpacity
+                          style={[styles.voteButton, styles.approveButton]}
+                          onPress={() =>
+                            handleVote(proposal.transactionID, "approve")
+                          }
+                        >
+                          <ThemedText style={styles.voteButtonText}>
+                            👍 Approve
+                          </ThemedText>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.voteButton, styles.rejectButton]}
+                          onPress={() =>
+                            handleVote(proposal.transactionID, "reject")
+                          }
+                        >
+                          <ThemedText style={styles.voteButtonText}>
+                            👎 Reject
+                          </ThemedText>
+                        </TouchableOpacity>
+                      </View>
+                    ) : null}
+
+                    {/* Show execute button only for approved proposals */}
+                    {proposal.status === "approved" && (
                       <TouchableOpacity
-                        style={[styles.voteButton, styles.approveButton]}
-                        onPress={() => handleVote(proposal.transactionID, 'approve')}
+                        style={styles.executeButton}
+                        onPress={() => handleExecute(proposal.transactionID)}
                       >
-                        <ThemedText style={styles.voteButtonText}>👍 Approve</ThemedText>
+                        <ThemedText style={styles.executeButtonText}>
+                          ⚡ Execute Transaction
+                        </ThemedText>
                       </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.voteButton, styles.rejectButton]}
-                        onPress={() => handleVote(proposal.transactionID, 'reject')}
-                      >
-                        <ThemedText style={styles.voteButtonText}>👎 Reject</ThemedText>
-                      </TouchableOpacity>
-                    </View>
-                  ) : null}
+                    )}
 
-                  {/* Show execute button only for approved proposals */}
-                  {proposal.status === 'approved' && (
-                    <TouchableOpacity
-                      style={styles.executeButton}
-                      onPress={() => handleExecute(proposal.transactionID)}
-                    >
-                      <ThemedText style={styles.executeButtonText}>⚡ Execute Transaction</ThemedText>
-                    </TouchableOpacity>
-                  )}
-                  
-                  {/* Show timestamp */}
-                  <ThemedText style={styles.timestampText}>
-                    Created: {new Date(proposal.createdAt).toLocaleString()}
-                  </ThemedText>
-                </ThemedView>
-              );
-            })
-          )}
-        </ThemedView>
+                    {/* Show timestamp */}
+                    <ThemedText style={styles.timestampText}>
+                      Created: {new Date(proposal.createdAt).toLocaleString()}
+                    </ThemedText>
+                  </ThemedView>
+                );
+              })
+            )}
+          </ThemedView>
 
-      {/* Pie Chart */}
-      <ThemedView style={styles.section}>
-        <ThemedText type="subtitle">Ranch Balance Breakdown</ThemedText>
-        {totalAssets > 0 ? (
-          <>
-            <Svg width={250} height={250} viewBox="0 0 250 250" style={{ alignSelf: 'center' }}>
-              <G rotation="-90" origin="125,125">
-                {(() => {
-                  let currentAngle = 0;
-                  return investments.map((inv) => {
-                    const angle = (inv.value / totalAssets) * 2 * Math.PI;
-                    const path = createArcPath(125, 125, 100, currentAngle, currentAngle + angle);
-                    currentAngle += angle;
-                    return <Path key={inv.key} d={path} fill={inv.color} />;
-                  });
-                })()}
-              </G>
-            </Svg>
-            <View style={styles.legend}>
-              {investments.map((inv) => (
-                <View key={inv.key} style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: inv.color }]} />
-                  <ThemedText>{inv.key}: ${inv.value.toLocaleString()}</ThemedText>
-                </View>
-              ))}
-            </View>
-          </>
-        ) : (
-          <ThemedText style={styles.emptyText}>
-            No assets yet. Make a deposit to get started!
-          </ThemedText>
-        )}
-      </ThemedView>
-
-      {/* Members */}
-      <ThemedView style={styles.section}>
-        <ThemedText type="subtitle">Members ({memberList.length || memberCount})</ThemedText>
-        {memberList.length > 0 ? (
-          <FlatList
-            data={memberList}
-            keyExtractor={(item, idx) => idx.toString()}
-            renderItem={({ item }) => <ThemedText>👨‍🚀 {item}</ThemedText>}
-          />
-        ) : (
-          <ThemedText>Loading members...</ThemedText>
-        )}
-      </ThemedView>
-
-      {/* Actions */}
-      <ThemedView style={styles.section}>
-        <View style={styles.buttonRow}>
-          {[
-            { label: 'Deposit', color: '#10B981', onPress: handleDeposit },
-            { label: 'Invest', color: '#FBBF24', onPress: handleInvest },
-            { label: 'Withdraw', color: '#F59E0B', onPress: handleWithdraw },
-            { label: 'Invite', color: '#3B82F6', onPress: handleInvite },
-            { label: 'Manage Members', color: '#8B5CF6', onPress: () => setManageMembersModalVisible(true) },
-            { label: 'Delete Ranch', color: '#EF4444', onPress: handleDelete },
-          ].map((btn) => (
-            <TouchableOpacity
-              key={btn.label}
-              style={[styles.actionButton, { backgroundColor: btn.color }]}
-              onPress={btn.onPress}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={styles.buttonText}>{btn.label}</ThemedText>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ThemedView>
-      </ThemedView>
-    </ScrollView>
-
-    {/* Invite Modal */}
-    <Modal
-    transparent
-    animationType="slide"
-    visible={inviteModalVisible}
-    onRequestClose={() => setInviteModalVisible(false)}
-    >
-      <ThemedView style={styles.modalBackground}>
-        <ThemedView style={styles.modalContent}>
-          <ThemedText type="subtitle">� Add Member to {name}</ThemedText>
-          <ThemedText style={styles.modalSubtext}>
-            Select a user to add to your ranch
-          </ThemedText>
-          
-          {availableUsers.length === 0 ? (
-            <ThemedText style={styles.emptyText}>
-              {loading ? 'Loading users...' : 'No users available to add'}
-            </ThemedText>
-          ) : (
-            <ScrollView style={styles.userList}>
-              {availableUsers.map((user) => (
-                <TouchableOpacity
-                  key={user.userId}
-                  style={[
-                    styles.userItem,
-                    selectedUserId === user.userId && styles.userItemSelected
-                  ]}
-                  onPress={() => setSelectedUserId(user.userId)}
+          {/* Pie Chart */}
+          <ThemedView style={styles.section}>
+            <ThemedText type="subtitle">Ranch Balance Breakdown</ThemedText>
+            {totalAssets > 0 ? (
+              <>
+                <Svg
+                  width={250}
+                  height={250}
+                  viewBox="0 0 250 250"
+                  style={{ alignSelf: "center" }}
                 >
-                  <View>
-                    <ThemedText style={styles.username}>👤 {user.username}</ThemedText>
-                    <ThemedText style={styles.userEmail}>{user.email}</ThemedText>
-                  </View>
-                  {selectedUserId === user.userId && (
-                    <ThemedText style={styles.checkmark}>✓</ThemedText>
-                  )}
+                  <G rotation="-90" origin="125,125">
+                    {(() => {
+                      let currentAngle = 0;
+                      return investments.map((inv) => {
+                        const angle = (inv.value / totalAssets) * 2 * Math.PI;
+                        const path = createArcPath(
+                          125,
+                          125,
+                          100,
+                          currentAngle,
+                          currentAngle + angle
+                        );
+                        currentAngle += angle;
+                        return <Path key={inv.key} d={path} fill={inv.color} />;
+                      });
+                    })()}
+                  </G>
+                </Svg>
+                <View style={styles.legend}>
+                  {investments.map((inv) => (
+                    <View key={inv.key} style={styles.legendItem}>
+                      <View
+                        style={[
+                          styles.legendColor,
+                          { backgroundColor: inv.color },
+                        ]}
+                      />
+                      <ThemedText>
+                        {inv.key}: ${inv.value.toLocaleString()}
+                      </ThemedText>
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : (
+              <ThemedText style={styles.emptyText}>
+                No assets yet. Make a deposit to get started!
+              </ThemedText>
+            )}
+          </ThemedView>
+
+          {/* Members */}
+          <ThemedView style={styles.section}>
+            <ThemedText type="subtitle">
+              Members ({memberList.length || memberCount})
+            </ThemedText>
+            {memberList.length > 0 ? (
+              <FlatList
+                data={memberList}
+                keyExtractor={(item, idx) => idx.toString()}
+                renderItem={({ item }) => (
+                  <ThemedText>
+                    👨‍🚀 {memberProfiles[item] ? memberProfiles[item] : item}
+                  </ThemedText>
+                )}
+              />
+            ) : (
+              <ThemedText>Loading members...</ThemedText>
+            )}
+          </ThemedView>
+
+          {/* Actions */}
+          <ThemedView style={styles.section}>
+            <View style={styles.buttonRow}>
+              {[
+                { label: "Deposit", color: "#10B981", onPress: handleDeposit },
+                { label: "Invest", color: "#FBBF24", onPress: handleInvest },
+                {
+                  label: "Withdraw",
+                  color: "#F59E0B",
+                  onPress: handleWithdraw,
+                },
+                { label: "Invite", color: "#3B82F6", onPress: handleInvite },
+                {
+                  label: "Manage Members",
+                  color: "#8B5CF6",
+                  onPress: () => setManageMembersModalVisible(true),
+                },
+                {
+                  label: "Delete Ranch",
+                  color: "#EF4444",
+                  onPress: handleDelete,
+                },
+              ].map((btn) => (
+                <TouchableOpacity
+                  key={btn.label}
+                  style={[styles.actionButton, { backgroundColor: btn.color }]}
+                  onPress={btn.onPress}
+                  activeOpacity={0.7}
+                >
+                  <ThemedText style={styles.buttonText}>{btn.label}</ThemedText>
                 </TouchableOpacity>
               ))}
-            </ScrollView>
-          )}
-          
-          <View style={styles.modalButtons}>
-            <TouchableOpacity 
-              onPress={() => {
-                setInviteModalVisible(false);
-                setSelectedUserId('');
-              }} 
-              style={styles.modalBtnCancel}
-              disabled={loading}
-            >
-              <ThemedText>Cancel</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={handleAddMember} 
-              style={[styles.modalBtnSend, loading && styles.btnDisabled]}
-              disabled={loading || !selectedUserId}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <ThemedText>Add Member</ThemedText>
-              )}
-            </TouchableOpacity>
-          </View>
+            </View>
+          </ThemedView>
         </ThemedView>
-      </ThemedView>
-    </Modal>
+      </ScrollView>
 
-    {/* Manage Members Modal */}
-    <Modal
-      transparent
-      animationType="slide"
-      visible={manageMembersModalVisible}
-      onRequestClose={() => setManageMembersModalVisible(false)}
-    >
-      <ThemedView style={styles.modalBackground}>
-        <ThemedView style={styles.modalContent}>
-          <ThemedText type="subtitle">Manage Members</ThemedText>
-          <FlatList
-            data={memberList}
-            keyExtractor={(item, idx) => idx.toString()}
-            renderItem={({ item }) => (
-              <View style={styles.memberActionRow}>
-                <ThemedText>👨‍🚀 {item}</ThemedText>
-                <View style={styles.memberButtons}>
-                  <TouchableOpacity onPress={() => handleKickMember(item)} style={styles.kickBtn}>
-                    <ThemedText>Kick</ThemedText>
+      {/* Invite Modal */}
+      <Modal
+        transparent
+        animationType="slide"
+        visible={inviteModalVisible}
+        onRequestClose={() => setInviteModalVisible(false)}
+      >
+        <ThemedView style={styles.modalBackground}>
+          <ThemedView style={styles.modalContent}>
+            <ThemedText type="subtitle">� Add Member to {name}</ThemedText>
+            <ThemedText style={styles.modalSubtext}>
+              Select a user to add to your ranch
+            </ThemedText>
+
+            {availableUsers.length === 0 ? (
+              <ThemedText style={styles.emptyText}>
+                {loading ? "Loading users..." : "No users available to add"}
+              </ThemedText>
+            ) : (
+              <ScrollView style={styles.userList}>
+                {availableUsers.map((user) => (
+                  <TouchableOpacity
+                    key={user.userId}
+                    style={[
+                      styles.userItem,
+                      selectedUserId === user.userId && styles.userItemSelected,
+                    ]}
+                    onPress={() => setSelectedUserId(user.userId)}
+                  >
+                    <View>
+                      <ThemedText style={styles.username}>
+                        👤 {user.username}
+                      </ThemedText>
+                      <ThemedText style={styles.userEmail}>
+                        {user.email}
+                      </ThemedText>
+                    </View>
+                    {selectedUserId === user.userId && (
+                      <ThemedText style={styles.checkmark}>✓</ThemedText>
+                    )}
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handlePromoteMember(item)} style={styles.promoteBtn}>
-                    <ThemedText>Promote</ThemedText>
-                  </TouchableOpacity>
-                </View>
-              </View>
+                ))}
+              </ScrollView>
             )}
-          />
-          <TouchableOpacity onPress={() => setManageMembersModalVisible(false)} style={styles.modalCloseBtn}>
-            <ThemedText>Close</ThemedText>
-          </TouchableOpacity>
-        </ThemedView>
-      </ThemedView>
-    </Modal>
 
-    {/* Invest Modal */}
-    <Modal
-      transparent
-      animationType="slide"
-      visible={investModalVisible}
-      onRequestClose={() => setInvestModalVisible(false)}
-    >
-      <ThemedView style={styles.modalBackground}>
-        <ThemedView style={styles.modalContent}>
-          <ThemedText type="subtitle">💰 Propose Investment</ThemedText>
-          <ThemedText style={styles.modalSubtext}>
-            Create a proposal that other members need to approve
-          </ThemedText>
-          <ThemedText style={styles.modalSubtext}>
-            Your Balance: ${personalBalance.toLocaleString()}
-          </ThemedText>
-          <ThemedText style={styles.modalSubtext}>
-            Ranch Balance: ${ranchBalance.toLocaleString()}
-          </ThemedText>
-          <TextInput
-            style={styles.input}
-            placeholder="Amount to invest"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            value={transactionAmount}
-            onChangeText={setTransactionAmount}
-          />
-          <View style={styles.modalButtons}>
-            <TouchableOpacity 
-              onPress={() => {
-                setInvestModalVisible(false);
-                setTransactionAmount('');
-              }} 
-              style={styles.modalBtnCancel}
-              disabled={loading}
-            >
-              <ThemedText>Cancel</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={handleInvestSubmit} 
-              style={[styles.modalBtnSend, loading && styles.btnDisabled]}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <ThemedText>Propose</ThemedText>
-              )}
-            </TouchableOpacity>
-          </View>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                onPress={() => {
+                  setInviteModalVisible(false);
+                  setSelectedUserId("");
+                }}
+                style={styles.modalBtnCancel}
+                disabled={loading}
+              >
+                <ThemedText>Cancel</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleAddMember}
+                style={[styles.modalBtnSend, loading && styles.btnDisabled]}
+                disabled={loading || !selectedUserId}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <ThemedText>Add Member</ThemedText>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ThemedView>
         </ThemedView>
-      </ThemedView>
-    </Modal>
+      </Modal>
 
-    {/* Deposit Modal */}
-    <Modal
-      transparent
-      animationType="slide"
-      visible={depositModalVisible}
-      onRequestClose={() => setDepositModalVisible(false)}
-    >
-      <ThemedView style={styles.modalBackground}>
-        <ThemedView style={styles.modalContent}>
-          <ThemedText type="subtitle">💵 Deposit to {name}</ThemedText>
-          <ThemedText style={styles.modalSubtext}>
-            Direct deposit - No approval needed
-          </ThemedText>
-          <ThemedText style={styles.modalSubtext}>
-            Your Balance: ${personalBalance.toLocaleString()}
-          </ThemedText>
-          <ThemedText style={styles.modalSubtext}>
-            Ranch Balance: ${ranchBalance.toLocaleString()}
-          </ThemedText>
-          <TextInput
-            style={styles.input}
-            placeholder="Amount to deposit"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            value={depositAmount}
-            onChangeText={setDepositAmount}
-          />
-          <View style={styles.modalButtons}>
-            <TouchableOpacity 
-              onPress={() => {
-                setDepositModalVisible(false);
-                setDepositAmount('');
-              }} 
-              style={styles.modalBtnCancel}
-              disabled={loading}
-            >
-              <ThemedText>Cancel</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={handleDepositSubmit} 
-              style={[styles.modalBtnSend, loading && styles.btnDisabled]}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <ThemedText>Deposit</ThemedText>
+      {/* Manage Members Modal */}
+      <Modal
+        transparent
+        animationType="slide"
+        visible={manageMembersModalVisible}
+        onRequestClose={() => setManageMembersModalVisible(false)}
+      >
+        <ThemedView style={styles.modalBackground}>
+          <ThemedView style={styles.modalContent}>
+            <ThemedText type="subtitle">Manage Members</ThemedText>
+            <FlatList
+              data={memberList}
+              keyExtractor={(item, idx) => idx.toString()}
+              renderItem={({ item }) => (
+                <View style={styles.memberActionRow}>
+                  <ThemedText>👨‍🚀 {item}</ThemedText>
+                  <View style={styles.memberButtons}>
+                    <TouchableOpacity
+                      onPress={() => handleKickMember(item)}
+                      style={styles.kickBtn}
+                    >
+                      <ThemedText>Kick</ThemedText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handlePromoteMember(item)}
+                      style={styles.promoteBtn}
+                    >
+                      <ThemedText>Promote</ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               )}
+            />
+            <TouchableOpacity
+              onPress={() => setManageMembersModalVisible(false)}
+              style={styles.modalCloseBtn}
+            >
+              <ThemedText>Close</ThemedText>
             </TouchableOpacity>
-          </View>
+          </ThemedView>
         </ThemedView>
-      </ThemedView>
-    </Modal>
+      </Modal>
 
-    {/* Withdraw Modal */}
-    <Modal
-      transparent
-      animationType="slide"
-      visible={withdrawModalVisible}
-      onRequestClose={() => setWithdrawModalVisible(false)}
-    >
-      <ThemedView style={styles.modalBackground}>
-        <ThemedView style={styles.modalContent}>
-          <ThemedText type="subtitle">💸 Withdraw from {name}</ThemedText>
-          <ThemedText style={styles.modalSubtext}>
-            Available Balance: ${ranchBalance.toLocaleString()}
-          </ThemedText>
-          <TextInput
-            style={styles.input}
-            placeholder="Amount"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            value={transactionAmount}
-            onChangeText={setTransactionAmount}
-          />
-          <View style={styles.modalButtons}>
-            <TouchableOpacity 
-              onPress={() => {
-                setWithdrawModalVisible(false);
-                setTransactionAmount('');
-              }} 
-              style={styles.modalBtnCancel}
-              disabled={loading}
-            >
-              <ThemedText>Cancel</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={handleWithdrawSubmit} 
-              style={[styles.modalBtnSend, { backgroundColor: '#10B981' }, loading && styles.btnDisabled]}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <ThemedText>Withdraw</ThemedText>
-              )}
-            </TouchableOpacity>
-          </View>
+      {/* Invest Modal */}
+      <Modal
+        transparent
+        animationType="slide"
+        visible={investModalVisible}
+        onRequestClose={() => setInvestModalVisible(false)}
+      >
+        <ThemedView style={styles.modalBackground}>
+          <ThemedView style={styles.modalContent}>
+            <ThemedText type="subtitle">💰 Propose Investment</ThemedText>
+            <ThemedText style={styles.modalSubtext}>
+              Create a proposal that other members need to approve
+            </ThemedText>
+            <ThemedText style={styles.modalSubtext}>
+              Your Balance: ${personalBalance.toLocaleString()}
+            </ThemedText>
+            <ThemedText style={styles.modalSubtext}>
+              Ranch Balance: ${ranchBalance.toLocaleString()}
+            </ThemedText>
+            <TextInput
+              style={styles.input}
+              placeholder="Amount to invest"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="numeric"
+              value={transactionAmount}
+              onChangeText={setTransactionAmount}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                onPress={() => {
+                  setInvestModalVisible(false);
+                  setTransactionAmount("");
+                }}
+                style={styles.modalBtnCancel}
+                disabled={loading}
+              >
+                <ThemedText>Cancel</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleInvestSubmit}
+                style={[styles.modalBtnSend, loading && styles.btnDisabled]}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <ThemedText>Propose</ThemedText>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ThemedView>
         </ThemedView>
-      </ThemedView>
-    </Modal>
+      </Modal>
+
+      {/* Deposit Modal */}
+      <Modal
+        transparent
+        animationType="slide"
+        visible={depositModalVisible}
+        onRequestClose={() => setDepositModalVisible(false)}
+      >
+        <ThemedView style={styles.modalBackground}>
+          <ThemedView style={styles.modalContent}>
+            <ThemedText type="subtitle">💵 Deposit to {name}</ThemedText>
+            <ThemedText style={styles.modalSubtext}>
+              Direct deposit - No approval needed
+            </ThemedText>
+            <ThemedText style={styles.modalSubtext}>
+              Your Balance: ${personalBalance.toLocaleString()}
+            </ThemedText>
+            <ThemedText style={styles.modalSubtext}>
+              Ranch Balance: ${ranchBalance.toLocaleString()}
+            </ThemedText>
+            <TextInput
+              style={styles.input}
+              placeholder="Amount to deposit"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="numeric"
+              value={depositAmount}
+              onChangeText={setDepositAmount}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                onPress={() => {
+                  setDepositModalVisible(false);
+                  setDepositAmount("");
+                }}
+                style={styles.modalBtnCancel}
+                disabled={loading}
+              >
+                <ThemedText>Cancel</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleDepositSubmit}
+                style={[styles.modalBtnSend, loading && styles.btnDisabled]}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <ThemedText>Deposit</ThemedText>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ThemedView>
+        </ThemedView>
+      </Modal>
+
+      {/* Withdraw Modal */}
+      <Modal
+        transparent
+        animationType="slide"
+        visible={withdrawModalVisible}
+        onRequestClose={() => setWithdrawModalVisible(false)}
+      >
+        <ThemedView style={styles.modalBackground}>
+          <ThemedView style={styles.modalContent}>
+            <ThemedText type="subtitle">💸 Withdraw from {name}</ThemedText>
+            <ThemedText style={styles.modalSubtext}>
+              Available Balance: ${ranchBalance.toLocaleString()}
+            </ThemedText>
+            <TextInput
+              style={styles.input}
+              placeholder="Amount"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="numeric"
+              value={transactionAmount}
+              onChangeText={setTransactionAmount}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                onPress={() => {
+                  setWithdrawModalVisible(false);
+                  setTransactionAmount("");
+                }}
+                style={styles.modalBtnCancel}
+                disabled={loading}
+              >
+                <ThemedText>Cancel</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleWithdrawSubmit}
+                style={[
+                  styles.modalBtnSend,
+                  { backgroundColor: "#10B981" },
+                  loading && styles.btnDisabled,
+                ]}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <ThemedText>Withdraw</ThemedText>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ThemedView>
+        </ThemedView>
+      </Modal>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0B1120', padding: 16 },
-  header: { marginBottom: 16, alignItems: 'center' },
-  headerText: { fontSize: 28, color: '#FBBF24', textAlign: 'center' },
-  section: { marginBottom: 24, padding: 16, borderRadius: 12, backgroundColor: '#1B1F3B' },
-  memberItem: { marginVertical: 4, color: '#E5E7EB' },
-  legend: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', marginRight: 16, marginBottom: 8 },
+  container: { flex: 1, backgroundColor: "#0B1120", padding: 16 },
+  header: { marginBottom: 16, alignItems: "center" },
+  headerText: { fontSize: 28, color: "#FBBF24", textAlign: "center" },
+  section: {
+    marginBottom: 24,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: "#1B1F3B",
+  },
+  memberItem: { marginVertical: 4, color: "#E5E7EB" },
+  legend: { flexDirection: "row", flexWrap: "wrap", marginTop: 12 },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 16,
+    marginBottom: 8,
+  },
   legendColor: { width: 16, height: 16, borderRadius: 4, marginRight: 6 },
-  modalBackground: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000000aa' },
-  modalContent: { width: 300, padding: 20, backgroundColor: '#1B1F3B', borderRadius: 12 },
-  input: { borderWidth: 1, borderColor: '#374151', borderRadius: 8, padding: 8, marginTop: 12, marginBottom: 12, color: '#fff' },
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  modalBtnCancel: { backgroundColor: '#EF4444', padding: 8, borderRadius: 8 },
-  modalBtnSend: { backgroundColor: '#3B82F6', padding: 8, borderRadius: 8 },
-  modalCloseBtn: { marginTop: 12, backgroundColor: '#9CA3AF', padding: 10, borderRadius: 8, alignItems: 'center' },
-  buttonRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
-  actionButton: { flex: 1, paddingVertical: 14, marginVertical: 6, borderRadius: 12, alignItems: 'center', justifyContent: 'center', minWidth: '45%' },
-  buttonText: { color: '#0B1120', fontWeight: 'bold', fontSize: 16 },
-  memberActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 6 },
-  memberButtons: { flexDirection: 'row', gap: 6 },
-  kickBtn: { backgroundColor: '#EF4444', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-  promoteBtn: { backgroundColor: '#3B82F6', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-  modalSubtext: { color: '#9CA3AF', marginTop: 8, fontSize: 14 },
+  modalBackground: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#000000aa",
+  },
+  modalContent: {
+    width: 300,
+    padding: 20,
+    backgroundColor: "#1B1F3B",
+    borderRadius: 12,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#374151",
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 12,
+    marginBottom: 12,
+    color: "#fff",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  modalBtnCancel: { backgroundColor: "#EF4444", padding: 8, borderRadius: 8 },
+  modalBtnSend: { backgroundColor: "#3B82F6", padding: 8, borderRadius: 8 },
+  modalCloseBtn: {
+    marginTop: 12,
+    backgroundColor: "#9CA3AF",
+    padding: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 14,
+    marginVertical: 6,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: "45%",
+  },
+  buttonText: { color: "#0B1120", fontWeight: "bold", fontSize: 16 },
+  memberActionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginVertical: 6,
+  },
+  memberButtons: { flexDirection: "row", gap: 6 },
+  kickBtn: {
+    backgroundColor: "#EF4444",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  promoteBtn: {
+    backgroundColor: "#3B82F6",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  modalSubtext: { color: "#9CA3AF", marginTop: 8, fontSize: 14 },
   userList: {
     maxHeight: 300,
     marginVertical: 16,
   },
   userItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 12,
     marginBottom: 8,
-    backgroundColor: '#1D1F33',
+    backgroundColor: "#1D1F33",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: "#374151",
   },
   userItemSelected: {
-    borderColor: '#10B981',
+    borderColor: "#10B981",
     borderWidth: 2,
-    backgroundColor: '#1D2F26',
+    backgroundColor: "#1D2F26",
   },
   username: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: "600",
+    color: "#fff",
   },
   userEmail: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
     marginTop: 2,
   },
   checkmark: {
     fontSize: 24,
-    color: '#10B981',
-    fontWeight: 'bold',
+    color: "#10B981",
+    fontWeight: "bold",
   },
   btnDisabled: { opacity: 0.6 },
   contentContainer: { paddingBottom: 20 },
-  personalBalance: { color: '#9CA3AF', fontSize: 14, marginTop: 4 },
-  balanceContainer: { 
-    marginVertical: 12, 
-    padding: 12, 
-    backgroundColor: '#1D1F33', 
+  personalBalance: { color: "#9CA3AF", fontSize: 14, marginTop: 4 },
+  balanceContainer: {
+    marginVertical: 12,
+    padding: 12,
+    backgroundColor: "#1D1F33",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#374151'
+    borderColor: "#374151",
   },
-  totalAssetsText: { 
-    fontSize: 20, 
-    fontWeight: 'bold', 
-    color: '#FBBF24',
+  totalAssetsText: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#FBBF24",
     marginBottom: 8,
-    textAlign: 'center'
+    textAlign: "center",
   },
-  balanceBreakdown: { 
-    marginTop: 8 
+  balanceBreakdown: {
+    marginTop: 8,
   },
-  balanceRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center',
-    paddingVertical: 6
+  balanceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 6,
   },
-  balanceLabel: { 
-    fontSize: 14, 
-    color: '#9CA3AF' 
+  balanceLabel: {
+    fontSize: 14,
+    color: "#9CA3AF",
   },
-  balanceValue: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    color: '#FBBF24' 
+  balanceValue: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FBBF24",
   },
-  balanceValueInvested: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    color: '#10B981' 
+  balanceValueInvested: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#10B981",
   },
   sectionTitle: { marginBottom: 12, fontSize: 18 },
-  proposalCard: { 
-    backgroundColor: '#0F1729', 
-    padding: 16, 
-    borderRadius: 12, 
+  proposalCard: {
+    backgroundColor: "#0F1729",
+    padding: 16,
+    borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#374151'
+    borderColor: "#374151",
   },
-  proposalHeader: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    marginBottom: 8 
+  proposalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
   },
-  proposalAmount: { fontSize: 24, fontWeight: 'bold', color: '#FBBF24' },
-  statusBadge: { 
-    paddingHorizontal: 12, 
-    paddingVertical: 4, 
-    borderRadius: 12 
+  proposalAmount: { fontSize: 24, fontWeight: "bold", color: "#FBBF24" },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  statusText: { fontSize: 12, fontWeight: 'bold', color: '#000' },
-  proposalDescription: { color: '#E5E7EB', marginBottom: 12 },
+  statusText: { fontSize: 12, fontWeight: "bold", color: "#000" },
+  proposalDescription: { color: "#E5E7EB", marginBottom: 12 },
   voteInfo: { marginBottom: 12 },
-  voteText: { color: '#9CA3AF', fontSize: 14 },
-  votedText: { 
-    color: '#10B981', 
-    fontSize: 14, 
-    fontWeight: 'bold', 
-    textAlign: 'center',
-    padding: 8 
+  voteText: { color: "#9CA3AF", fontSize: 14 },
+  votedText: {
+    color: "#10B981",
+    fontSize: 14,
+    fontWeight: "bold",
+    textAlign: "center",
+    padding: 8,
   },
-  voteButtons: { 
-    flexDirection: 'row', 
-    gap: 8, 
-    marginTop: 8 
+  voteButtons: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
   },
-  voteButton: { 
-    flex: 1, 
-    padding: 12, 
-    borderRadius: 8, 
-    alignItems: 'center' 
+  voteButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
   },
-  approveButton: { backgroundColor: '#10B981' },
-  rejectButton: { backgroundColor: '#EF4444' },
-  voteButtonText: { color: '#fff', fontWeight: 'bold' },
-  executeButton: { 
-    backgroundColor: '#8B5CF6', 
-    padding: 12, 
-    borderRadius: 8, 
-    alignItems: 'center',
-    marginTop: 8
+  approveButton: { backgroundColor: "#10B981" },
+  rejectButton: { backgroundColor: "#EF4444" },
+  voteButtonText: { color: "#fff", fontWeight: "bold" },
+  executeButton: {
+    backgroundColor: "#8B5CF6",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 8,
   },
-  executeButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  emptyText: { color: '#9CA3AF', fontStyle: 'italic', textAlign: 'center', padding: 16 },
-  timestampText: { color: '#6B7280', fontSize: 12, marginTop: 8, fontStyle: 'italic' },
+  executeButtonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
+  emptyText: {
+    color: "#9CA3AF",
+    fontStyle: "italic",
+    textAlign: "center",
+    padding: 16,
+  },
+  timestampText: {
+    color: "#6B7280",
+    fontSize: 12,
+    marginTop: 8,
+    fontStyle: "italic",
+  },
 });
