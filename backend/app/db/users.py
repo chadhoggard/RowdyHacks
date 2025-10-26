@@ -29,6 +29,7 @@ def create_user(username: str, email: str, password: str) -> dict:
         USER_PK_ATTR: user_id,
         "username": username,
         "email": email.lower(),
+        "balance": 10000,
         "passwordHash": password_hash,
         "createdAt": datetime.datetime.utcnow().isoformat(),
         "status": "active",
