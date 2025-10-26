@@ -23,7 +23,7 @@ def create_user(username: str, email: str, password: str) -> dict:
         dict: Created user item
     """
     user_id = str(uuid.uuid4())
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    password_hash = password
     
     item = {
         USER_PK_ATTR: user_id,
