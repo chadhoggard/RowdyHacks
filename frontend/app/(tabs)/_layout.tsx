@@ -1,7 +1,7 @@
+import * as Haptics from 'expo-haptics';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Pressable, Alert } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { Alert, Pressable } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { Colors } from '@/constants/theme';

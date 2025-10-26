@@ -1,7 +1,7 @@
 import { Redirect } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View, Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, View } from 'react-native';
 
 // Helper function to get data (works on web and native)
 const getData = async (key: string) => {

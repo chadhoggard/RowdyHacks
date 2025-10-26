@@ -5,14 +5,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Image,
-  ImageBackground,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
-  ActivityIndicator,
+    ActivityIndicator,
+    Alert,
+    Image,
+    ImageBackground,
+    StyleSheet,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 const API_BASE_URL = 'http://localhost:8080';

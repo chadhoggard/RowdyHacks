@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,7 +15,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
 
 const API_BASE_URL = 'http://localhost:8080';
 
