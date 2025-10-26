@@ -2,6 +2,7 @@
 Stock Trading Routes
 Handles stock listing, quotes, and trade execution
 """
+from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
@@ -148,18 +149,20 @@ async def create_trade_proposal(
     # Create description
     description = trade.description or f"Buy {trade.quantity} shares of {stock_name} ({trade.symbol}) @ ${price:.2f}"
     
-    # Create transaction proposal
+    # Convert floats to Decimal for DynamoDB
+    # DynamoDB requires Decimal type for numbers
     transaction = txn_db.create_transaction(
         group_id=trade.group_id,
         user_id=current_user["userId"],
-        amount=total_cost,
+        amount=float(total_cost),  # amount is converted to Decimal in create_transaction
         description=description,
         transaction_type="investment",
         metadata={
             "stock_symbol": trade.symbol,
             "stock_name": stock_name,
-            "quantity": trade.quantity,
-            "price_per_share": price,
+            "quantity": str(trade.quantity),  # Convert to string to avoid Decimal issues
+            "price_per_share": str(round(price, 2)),  # Convert to string
+            "total_cost": str(round(total_cost, 2)),  # Convert to string
             "order_type": "market",
             "side": "buy",
         }
