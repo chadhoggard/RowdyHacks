@@ -5,7 +5,7 @@ CRUD functions for Transactions table
 import datetime
 import uuid
 from decimal import Decimal
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Key, Attr
 from .connection import transactions_table
 
 
@@ -45,9 +45,9 @@ def get_transaction(transaction_id: str) -> dict:
     return response.get("Item")
 
 
-def get_group_transactions(group_id: str) -> list:
+def get_group_transactions(group_id: str):
     """
-    Get all transactions for a group using GSI
+    Get all transactions for a group using scan (fallback if no GSI)
     
     Args:
         group_id: ID of the group
@@ -56,12 +56,13 @@ def get_group_transactions(group_id: str) -> list:
         list: List of transaction items
     """
     try:
-        response = transactions_table.query(
-            IndexName="groupID-index",
-            KeyConditionExpression=Key("groupID").eq(group_id)
+        # Use scan with filter instead of query (less efficient but works without GSI)
+        response = transactions_table.scan(
+            FilterExpression=Attr("groupID").eq(group_id)
         )
         return response.get("Items", [])
-    except transactions_table.meta.client.exceptions.ResourceNotFoundException:
+    except Exception as e:
+        print(f"Error scanning transactions: {e}")
         return []
 
 

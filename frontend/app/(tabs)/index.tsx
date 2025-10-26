@@ -15,9 +15,9 @@ interface Ranch {
 export default function HomeScreen() {
   const router = useRouter();
 
-  // Mock ranch data
+  // Mock ranch data - using real backend group ID for demo
   const ranches: Ranch[] = [
-    { id: '1', name: 'Area 51 Ranch', balance: 5000, members: ['Alice', 'Bob', 'Charlie'] },
+    { id: 'aab32fee-a207-4628-89b0-26ab98377c23', name: 'Area 51 Ranch', balance: 5000, members: ['Alice', 'Bob', 'Charlie'] },
     { id: '2', name: 'Rodeo Investors', balance: 10000, members: ['Dave', 'Eve', 'Frank', 'Grace', 'Heidi'] },
     { id: '3', name: 'Cosmic Corral', balance: 7500, members: ['Ivan', 'Judy'] },
   ];

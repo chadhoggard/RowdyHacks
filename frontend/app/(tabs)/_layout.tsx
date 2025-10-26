@@ -30,6 +30,12 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="barn" size={size} color={color} />
         }}
       />
+      <Tabs.Screen
+        name="transactions"
+        options={{
+          href: null, // Hide from tabs
+        }}
+      />
     </Tabs>
   );
 }
