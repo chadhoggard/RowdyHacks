@@ -2,6 +2,7 @@ import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -13,7 +14,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
 
 const API_BASE_URL = 'http://localhost:8080';
 
