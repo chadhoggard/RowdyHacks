@@ -434,7 +434,6 @@ const styles = StyleSheet.create({
   balanceText: {
     fontSize: 14,
     fontWeight: "600",
-    marginLeft: "auto", // This pushes the amount to the right while keeping it closer
   },
   balanceLabel: {
     fontSize: 14,
