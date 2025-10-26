@@ -3,7 +3,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -51,6 +51,11 @@ interface Contribution {
 }
 
 const getMockReturn = (balance: number) => {
+  // NEW: If balance is less than $60, return 0%
+  if (balance < 60) {
+    return `+$0.00 (0.0%)`;
+  }
+
   const percent = (Math.random() * 3 + 1) / 100;
   const amount = Math.round(balance * percent * 100) / 100;
   const percentString = (percent * 100).toFixed(1);
@@ -326,7 +331,7 @@ export default function HomeScreen() {
       >
         {/* STYLIZED HEADER */}
         <ThemedView style={styles.titleContainer}>
-          <ThemedText style={styles.titleText}>🚀 PartnerInvest 🤠</ThemedText>
+          <ThemedText style={styles.titleText}>🚀 FrontierFund 🤠</ThemedText>
           <ThemedText style={styles.subtitleText}>
             Yeehaw! Partner Up and Invest Together!
           </ThemedText>
@@ -402,50 +407,6 @@ export default function HomeScreen() {
                 <ThemedText style={styles.summaryLabel}>Invested</ThemedText>
                 <ThemedText style={styles.summaryValue}>
                   ${totalInvested.toLocaleString()}
-                </ThemedText>
-              </View>
-            </View>
-          </ThemedView>
-        )}
-
-        {/* CONTRIBUTIONS & GROWTH */}
-        {ranches.length > 0 && contributions.length > 0 && (
-          <ThemedView style={styles.contributionsCard}>
-            <View style={styles.contributionsHeader}>
-              <ThemedText type="subtitle" style={styles.contributionsTitle}>
-                📈 Your Contributions & Growth
-              </ThemedText>
-              <TouchableOpacity
-                style={styles.viewAllBtn}
-                onPress={() =>
-                  Alert.alert("Coming Soon", "View all contributions history")
-                }
-              >
-                <ThemedText style={styles.viewAllText}>View All →</ThemedText>
-              </TouchableOpacity>
-            </View>
-
-            {/* Growth Stats */}
-            <View style={styles.growthStats}>
-              <View style={styles.growthStatItem}>
-                <ThemedText style={styles.growthLabel}>
-                  Total Contributed
-                </ThemedText>
-                <ThemedText style={styles.growthValue}>
-                  ${calculateContributionGrowth().total.toLocaleString()}
-                </ThemedText>
-              </View>
-              <View style={styles.growthStatItem}>
-                <ThemedText style={styles.growthLabel}>Last 30 Days</ThemedText>
-                <ThemedText style={[styles.growthValue, styles.growthPositive]}>
-                  +$
-                  {calculateContributionGrowth().lastMonth.toLocaleString()}
-                </ThemedText>
-              </View>
-              <View style={styles.growthStatItem}>
-                <ThemedText style={styles.growthLabel}>Growth Rate</ThemedText>
-                <ThemedText style={[styles.growthValue, styles.growthPositive]}>
-                  +{calculateContributionGrowth().percentChange}%
                 </ThemedText>
               </View>
             </View>
@@ -534,32 +495,6 @@ export default function HomeScreen() {
                     {getMockReturn(ranch.balance)}
                   </ThemedText>
                 </ThemedText>
-
-                {/* Quick Actions */}
-                <View style={styles.quickActions}>
-                  <TouchableOpacity
-                    style={styles.quickActionBtn}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      Alert.alert("Coming Soon", "Add Funds feature");
-                    }}
-                  >
-                    <ThemedText style={styles.quickActionText}>
-                      💸 Add Funds
-                    </ThemedText>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.quickActionBtn}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      Alert.alert("Coming Soon", "Invite Member feature");
-                    }}
-                  >
-                    <ThemedText style={styles.quickActionText}>
-                      👥 Invite
-                    </ThemedText>
-                  </TouchableOpacity>
-                </View>
               </TouchableOpacity>
             ))}
           </View>

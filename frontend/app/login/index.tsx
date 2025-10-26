@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -194,7 +194,7 @@ export default function LoginScreen() {
           {/* Title */}
           <View style={styles.titleContainer}>
             <ThemedText type="title" style={styles.title} lightColor="#fff" darkColor="#fff">
-              🚀 PartnerInvest 🤠
+              🚀 FrontierFund 🤠
             </ThemedText>
             <ThemedText style={styles.subtitle} lightColor="#fff" darkColor="#fff">
               {isSignup ? 'Create Your Account' : 'Welcome Back, Cowboy!'}
