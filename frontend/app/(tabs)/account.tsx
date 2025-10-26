@@ -1,7 +1,6 @@
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -9,29 +8,61 @@ import {
     Alert,
     Image,
     ImageBackground,
+    Platform,
     StyleSheet,
     TouchableOpacity,
     View
 } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 
 const API_BASE_URL = 'http://localhost:8080';
 
+// Platform-specific storage helpers
+const storeData = async (key: string, value: string) => {
+  if (Platform.OS === 'web') {
+    localStorage.setItem(key, value);
+  } else {
+    await SecureStore.setItemAsync(key, value);
+  }
+};
+
+const getData = async (key: string) => {
+  if (Platform.OS === 'web') {
+    return localStorage.getItem(key);
+  } else {
+    return await SecureStore.getItemAsync(key);
+  }
+};
+
+const removeData = async (key: string) => {
+  if (Platform.OS === 'web') {
+    localStorage.removeItem(key);
+  } else {
+    await SecureStore.deleteItemAsync(key);
+  }
+};
+
 export default function AccountScreen() {
-  const { userId, username, token, logout } = useAuth();
   const router = useRouter();
+  const [userId, setUserId] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Fetch user details from backend
     const fetchUserDetails = async () => {
-      if (!userId || !token) {
-        setLoading(false);
-        return;
-      }
-
       try {
-        const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+        const token = await getData('authToken');
+        
+        if (!token) {
+          console.log('⚠️ Not logged in, redirecting to login');
+          router.replace('/login');
+          return;
+        }
+
+        console.log('🔍 Fetching user details from /users/me');
+        const response = await fetch(`${API_BASE_URL}/users/me`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -39,13 +70,20 @@ export default function AccountScreen() {
 
         if (response.ok) {
           const data = await response.json();
+          console.log('✅ User data loaded:', data);
+          setUserId(data.userId || 'Not available');
+          setUsername(data.username || 'Not available');
           setEmail(data.email || 'Not available');
         } else {
-          console.error('Failed to fetch user details');
+          console.error('❌ Failed to fetch user details:', response.status);
+          setUserId('Unable to load');
+          setUsername('Unable to load');
           setEmail('Unable to load');
         }
       } catch (error) {
-        console.error('Error fetching user details:', error);
+        console.error('❌ Error fetching user details:', error);
+        setUserId('Unable to load');
+        setUsername('Unable to load');
         setEmail('Unable to load');
       } finally {
         setLoading(false);
@@ -53,24 +91,46 @@ export default function AccountScreen() {
     };
 
     fetchUserDetails();
-  }, [userId, token]);
+  }, []);
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to log out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Logout', 
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/login');
+  const handleLogout = async () => {
+    console.log('🚪 Logout button clicked');
+    
+    // On web, use window.confirm instead of Alert.alert
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to log out?');
+      if (confirmed) {
+        console.log('🚪 Logout confirmed, clearing data...');
+        await removeData('authToken');
+        await removeData('userId');
+        await removeData('username');
+        console.log('🚪 Logged out successfully');
+        router.replace('/login');
+      } else {
+        console.log('🚫 Logout cancelled');
+      }
+    } else {
+      // On native, use Alert.alert
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to log out?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Logout', 
+            style: 'destructive',
+            onPress: async () => {
+              console.log('🚪 Logout confirmed, clearing data...');
+              await removeData('authToken');
+              await removeData('userId');
+              await removeData('username');
+              console.log('🚪 Logged out successfully');
+              router.replace('/login');
+            }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
   };
 
   return (

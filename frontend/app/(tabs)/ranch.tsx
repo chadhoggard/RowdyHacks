@@ -69,7 +69,9 @@ export default function RanchScreen() {
   const [manageMembersModalVisible, setManageMembersModalVisible] = useState(false);
   const [investModalVisible, setInvestModalVisible] = useState(false);
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
+  const [depositModalVisible, setDepositModalVisible] = useState(false);
   const [transactionAmount, setTransactionAmount] = useState('');
+  const [depositAmount, setDepositAmount] = useState('');
 
   // Fetch updated group balance and members
   const fetchGroupData = async () => {
@@ -272,6 +274,68 @@ export default function RanchScreen() {
   };
 
   const handleDelete = () => Alert.alert('Delete Ranch', `Are you sure you want to delete ${name}?`);
+  
+  const handleDeposit = () => setDepositModalVisible(true);
+  
+  const handleDepositSubmit = async () => {
+    console.log('💵 handleDepositSubmit called');
+    const amount = parseFloat(depositAmount);
+    console.log('Deposit amount:', amount);
+    
+    if (!amount || amount <= 0) {
+      console.log('❌ Invalid deposit amount');
+      Alert.alert('Invalid Amount', 'Please enter a valid positive amount');
+      return;
+    }
+
+    // Check if user has enough personal balance
+    if (amount > personalBalance) {
+      console.log('❌ Insufficient personal funds');
+      Alert.alert(
+        'Insufficient Funds',
+        `You don't have enough to deposit $${amount.toLocaleString()}. Your available balance is $${personalBalance.toLocaleString()}.`
+      );
+      return;
+    }
+
+    console.log('✅ Deposit validation passed, making API call');
+    setLoading(true);
+    try {
+      // Direct deposit to ranch balance
+      const response = await fetch(`${API_BASE_URL}/groups/${id}/deposit`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${DEMO_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ amount: amount }), // Positive amount for deposit
+      });
+
+      if (response.ok) {
+        console.log('✅ Deposit successful');
+        // Update personal balance (subtract deposited amount)
+        setPersonalBalance(prev => prev - amount);
+        // Close modal and refresh
+        setDepositAmount('');
+        setDepositModalVisible(false);
+        await fetchGroupData();
+        Alert.alert(
+          'Success! 💰',
+          `Deposited $${amount.toLocaleString()} into ${name}. Your new balance is $${(personalBalance - amount).toLocaleString()}.`
+        );
+      } else {
+        const error = await response.json();
+        console.log('❌ Deposit error response:', error);
+        Alert.alert('Error', error.detail || 'Failed to deposit');
+      }
+    } catch (error) {
+      console.log('❌ Deposit network error:', error);
+      Alert.alert('Error', 'Network error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   const handleInvite = () => {
     Alert.alert('Invite Sent', `You invited ${inviteUsername} to ${name}`);
     setInviteUsername('');
@@ -493,8 +557,9 @@ export default function RanchScreen() {
       <ThemedView style={styles.section}>
         <View style={styles.buttonRow}>
           {[
+            { label: 'Deposit', color: '#10B981', onPress: handleDeposit },
             { label: 'Invest', color: '#FBBF24', onPress: handleInvest },
-            { label: 'Withdraw', color: '#10B981', onPress: handleWithdraw },
+            { label: 'Withdraw', color: '#F59E0B', onPress: handleWithdraw },
             { label: 'Invite', color: '#3B82F6', onPress: () => setInviteModalVisible(true) },
             { label: 'Manage Members', color: '#8B5CF6', onPress: () => setManageMembersModalVisible(true) },
             { label: 'Delete Ranch', color: '#EF4444', onPress: handleDelete },
@@ -623,6 +688,60 @@ export default function RanchScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <ThemedText>Propose</ThemedText>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ThemedView>
+      </ThemedView>
+    </Modal>
+
+    {/* Deposit Modal */}
+    <Modal
+      transparent
+      animationType="slide"
+      visible={depositModalVisible}
+      onRequestClose={() => setDepositModalVisible(false)}
+    >
+      <ThemedView style={styles.modalBackground}>
+        <ThemedView style={styles.modalContent}>
+          <ThemedText type="subtitle">💵 Deposit to {name}</ThemedText>
+          <ThemedText style={styles.modalSubtext}>
+            Direct deposit - No approval needed
+          </ThemedText>
+          <ThemedText style={styles.modalSubtext}>
+            Your Balance: ${personalBalance.toLocaleString()}
+          </ThemedText>
+          <ThemedText style={styles.modalSubtext}>
+            Ranch Balance: ${ranchBalance.toLocaleString()}
+          </ThemedText>
+          <TextInput
+            style={styles.input}
+            placeholder="Amount to deposit"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="numeric"
+            value={depositAmount}
+            onChangeText={setDepositAmount}
+          />
+          <View style={styles.modalButtons}>
+            <TouchableOpacity 
+              onPress={() => {
+                setDepositModalVisible(false);
+                setDepositAmount('');
+              }} 
+              style={styles.modalBtnCancel}
+              disabled={loading}
+            >
+              <ThemedText>Cancel</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={handleDepositSubmit} 
+              style={[styles.modalBtnSend, loading && styles.btnDisabled]}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <ThemedText>Deposit</ThemedText>
               )}
             </TouchableOpacity>
           </View>

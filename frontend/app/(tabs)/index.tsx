@@ -3,7 +3,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -58,17 +58,80 @@ export default function HomeScreen() {
   const [addRanchModalVisible, setAddRanchModalVisible] = useState(false);
   const [newRanchName, setNewRanchName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fetchingRanches, setFetchingRanches] = useState(true);
   
   const breakpoint = 768;
   const numColumns = width < breakpoint ? 1 : 2;
 
+  // Fetch user's ranches from backend
+  const fetchRanches = async () => {
+    try {
+      const token = await getData('authToken');
+
+      if (!token) {
+        console.log('⚠️ Not logged in, skipping ranch fetch');
+        setFetchingRanches(false);
+        return;
+      }
+
+      console.log('🔍 Fetching ranches from /users/me');
+      const response = await fetch(`${API_BASE_URL}/users/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📦 User data:', data);
+        
+        if (data.groups && data.groups.length > 0) {
+          const userRanches: Ranch[] = data.groups.map((group: any) => ({
+            id: group.groupID,
+            name: group.name,
+            balance: group.balance || 0,
+            members: group.members || [],
+          }));
+          console.log('✅ Loaded ranches:', userRanches);
+          setRanches([addButton, ...userRanches]);
+        } else {
+          console.log('📭 No ranches found');
+          setRanches([addButton]);
+        }
+      } else {
+        console.error('❌ Failed to fetch ranches:', response.status);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching ranches:', error);
+    } finally {
+      setFetchingRanches(false);
+    }
+  };
+
+  // Load ranches on mount
+  useEffect(() => {
+    fetchRanches();
+  }, []);
+
   const handlePressRanch = (ranch: Ranch) => {
+    console.log('🖱️ Ranch clicked:', ranch);
+    console.log('🖱️ Ranch ID:', ranch.id);
+    console.log('🖱️ Ranch name:', ranch.name);
+    
     if (ranch.id === 'add') {
       setAddRanchModalVisible(true);
       return;
     }
+    
+    console.log('🚀 Navigating to ranch with params:', { 
+      id: ranch.id, 
+      name: ranch.name, 
+      balance: ranch.balance, 
+      members: ranch.members.join(',') 
+    });
+    
     router.push({
-      pathname: '/ranch',
+      pathname: '/(tabs)/ranch',
       params: { id: ranch.id, name: ranch.name, balance: ranch.balance, members: ranch.members.join(',') }
     });
   };
