@@ -45,7 +45,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   
-  // --- State for ranches, modal, and input ---
   const [ranches, setRanches] = useState<Ranch[]>([addButton, ...mockRanches]);
   const [addRanchModalVisible, setAddRanchModalVisible] = useState(false);
   const [newRanchName, setNewRanchName] = useState('');
@@ -54,39 +53,32 @@ export default function HomeScreen() {
   const numColumns = width < breakpoint ? 1 : 2;
 
   const handlePressRanch = (ranch: Ranch) => {
-    // If it's the add button, show the modal
     if (ranch.id === 'add') {
       setAddRanchModalVisible(true);
       return;
     }
-    // Otherwise, navigate
     router.push({
       pathname: '/ranch',
       params: { id: ranch.id, name: ranch.name, balance: ranch.balance, members: ranch.members.join(',') }
     });
   };
 
-  // --- Function to handle creating the new ranch ---
   const handleAddNewRanch = () => {
     if (!newRanchName.trim()) {
       Alert.alert('Error', 'Please enter a name for your ranch.');
       return;
     }
-
     const newRanch: Ranch = {
-      id: Math.random().toString(36).substring(7), // Simple random ID
+      id: Math.random().toString(36).substring(7),
       name: newRanchName.trim(),
       balance: 0,
-      members: ['You'], // Add the creator as a member
+      members: ['You'],
     };
-
-    // Add the new ranch after the "add" button
     setRanches(prevRanches => [
       addButton, 
       newRanch, 
-      ...prevRanches.slice(1) // All ranches except the add button
+      ...prevRanches.slice(1)
     ]);
-
     setNewRanchName('');
     setAddRanchModalVisible(false);
   };
@@ -107,9 +99,10 @@ export default function HomeScreen() {
           </ImageBackground>
         }
       >
+        {/* --- STYLIZED HEADER --- */}
         <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title">🚀 PartnerInvest 🤠</ThemedText>
-          <ThemedText type="subtitle">Yeehaw! Partner Up and Invest Together!</ThemedText>
+          <ThemedText style={styles.titleText}>🚀 PartnerInvest 🤠</ThemedText>
+          <ThemedText style={styles.subtitleText}>Yeehaw! Partner Up and Invest Together!</ThemedText>
         </ThemedView>
 
         <ThemedView style={styles.sectionContainer}>
@@ -129,7 +122,9 @@ export default function HomeScreen() {
                     style={[
                       styles.ranchCard,
                       numColumns > 1 ? styles.ranchCardGrid : styles.ranchCardList,
-                      styles.addRanchCard, // Special style
+                      styles.addRanchCard,
+                      // --- CONDITIONAL HEIGHT ---
+                      numColumns === 1 && styles.addRanchCardMobile
                     ]}
                     onPress={() => handlePressRanch(item)}
                     activeOpacity={0.8}
@@ -138,7 +133,6 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 );
               }
-
               // --- Render normal ranch card ---
               return (
                 <TouchableOpacity
@@ -159,19 +153,20 @@ export default function HomeScreen() {
                       {getMockReturn(item.balance)}
                     </ThemedText>
                   </ThemedText>
-
                 </TouchableOpacity>
               );
             }}
           />
         </ThemedView>
-
-        <ThemedView style={styles.sectionContainer}>
-          <ThemedText type="subtitle">Tip</ThemedText>
-          <ThemedText>
-            Tap a ranch to view details or tap "+" to create a new one.
+        
+        {/* --- STYLIZED TIP SECTION --- */}
+        <ThemedView style={[styles.sectionContainer, styles.tipContainer]}>
+          <ThemedText type="subtitle">💡 Pro Tip</ThemedText>
+          <ThemedText style={styles.tipText}>
+            Tap a ranch to view its detailed portfolio, or tap "+" to start a new investment group with your partners.
           </ThemedText>
         </ThemedView>
+
       </ParallaxScrollView>
 
       {/* --- Add Ranch Modal --- */}
@@ -209,17 +204,35 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: 'column',
-    alignItems: 'flex-start',
+    alignItems: 'center', // Center title block
     gap: 4,
-    marginBottom: 16,
+    marginBottom: 24, // Add more space below header
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FFA500',
   },
+  // --- New Title Styles ---
+  titleText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff',
+    textShadowColor: 'rgba(255, 165, 0, 0.75)', // Orange shadow
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
+  subtitleText: {
+    fontSize: 16,
+    fontStyle: 'italic',
+    color: '#9CA3AF', // Lighter, secondary color
+  },
+  // --- End Title Styles ---
   sectionContainer: {
     gap: 12,
     marginBottom: 16,
   },
   row: {
     justifyContent: 'space-between',
-    alignItems: 'flex-start', // <-- CHANGE: Added this
+    // Removed alignItems: 'flex-start' to make grid items equal height
   },
   ranchCard: {
     alignItems: 'center',
@@ -249,8 +262,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFA500',
     shadowOpacity: 0.3,
-    minHeight: 'auto', // <-- CHANGE: Added this
-    height: 100, // <-- CHANGE: Added this
+  },
+  // --- New Style for Mobile "+" Button ---
+  addRanchCardMobile: {
+    minHeight: 'auto',
+    height: 100,
   },
   addRanchText: {
     fontSize: 48,
@@ -276,6 +292,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 8,
   },
+  // --- New Tip Section Styles ---
+  tipContainer: {
+    backgroundColor: '#1B1F3B',
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FBBF24', // Yellow accent
+  },
+  tipText: {
+    color: '#E5E7EB',
+    lineHeight: 20,
+  },
+  // --- End Tip Styles ---
   modalBackground: { 
     flex: 1, 
     justifyContent: 'center', 
