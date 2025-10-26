@@ -13,13 +13,12 @@ interface Ranch {
   members: string[];
 }
 
-const getMockReturn = (balance: number) => {
-  const percent = (Math.random() * 3 + 1) / 100;
-  const amount = Math.round(balance * percent * 100) / 100; 
+const getMockReturn = (id: string, balance: number) => {
+  const percent = (3 + parseInt(id)) / 100;
+  const amount = balance * percent;
   const percentString = (percent * 100).toFixed(1);
   return `+$${amount.toLocaleString()} (${percentString}%)`;
 };
-
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -89,10 +88,10 @@ export default function HomeScreen() {
               <ThemedText>Members: {Array.isArray(item.members) ? item.members.length : item.members}</ThemedText>
               
               <ThemedText>
-                Monthly Return:{' '}
-                <ThemedText style={styles.returnText}>
-                  {getMockReturn(item.balance)}
-                </ThemedText>
+              Monthly Return:{' '}
+              <ThemedText style={styles.returnText}>
+                {getMockReturn(item.id, item.balance)}
+              </ThemedText>
             </ThemedText>
 
             </TouchableOpacity>
