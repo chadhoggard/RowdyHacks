@@ -197,3 +197,10 @@ def get_total_assets(group_id: str) -> float:
     liquid = float(group.get("balance", 0))
     invested = float(group.get("investedAmount", 0))
     return liquid + invested
+
+
+def delete_group(group_id: str):
+    """Delete a group from the database"""
+    groups_table.delete_item(
+        Key={"groupID": group_id}
+    )

@@ -1,7 +1,7 @@
 import { StockTradingModal } from "@/components/StockTradingModal";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -20,6 +20,14 @@ import {
 import Svg, { G, Path } from "react-native-svg";
 
 const API_BASE_URL = "http://localhost:8080";
+
+// Format money to 2 decimal places with commas
+const formatMoney = (amount: number): string => {
+  return amount.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
 
 // Platform-specific storage helpers
 const getData = async (key: string) => {
@@ -81,9 +89,18 @@ export default function RanchScreen() {
 
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [groupOwnerId, setGroupOwnerId] = useState<string | null>(null);
   const [ranchBalance, setRanchBalance] = useState(Number(balance)); // Liquid cash
   const [investedAmount, setInvestedAmount] = useState(0); // Locked in investments
   const [totalAssets, setTotalAssets] = useState(Number(balance)); // Total = liquid + invested
+  const [stockHoldings, setStockHoldings] = useState<Array<{
+    symbol: string;
+    name: string;
+    quantity: number;
+    current_price: number;
+    current_value: number;
+    percentage: number;
+  }>>([]);
   const [memberList, setMemberList] = useState<string[]>(
     members ? members.split(",") : []
   );
@@ -132,6 +149,7 @@ export default function RanchScreen() {
       fetchGroupData();
       fetchProposals();
       fetchPersonalBalance();
+      fetchStockHoldings();
     }
   }, [authToken, id]);
 
@@ -160,9 +178,54 @@ export default function RanchScreen() {
     }
   };
 
+  // Fetch stock holdings breakdown for the group
+  const fetchStockHoldings = async () => {
+    if (!authToken || !id) {
+      console.log("⚠️ No auth token or group ID, skipping holdings fetch");
+      return;
+    }
+    try {
+      console.log("📊 Fetching stock holdings for group:", id);
+      const response = await fetch(`${API_BASE_URL}/groups/${id}/holdings`, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log("✅ Stock holdings fetched:", data);
+        setStockHoldings(data.holdings || []);
+      } else {
+        console.log("❌ Failed to fetch stock holdings:", response.status);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching stock holdings:", error);
+    }
+  };
+
+  // Color palette for stocks in pie chart
+  const stockColors = [
+    "#EF4444", // red
+    "#F59E0B", // orange  
+    "#10B981", // green
+    "#3B82F6", // blue
+    "#8B5CF6", // purple
+    "#EC4899", // pink
+    "#14B8A6", // teal
+    "#F97316", // dark orange
+    "#06B6D4", // cyan
+    "#6366F1", // indigo
+  ];
+
+  // Build investments array dynamically with individual stocks
   const investments = [
     { key: "Liquid Cash", value: ranchBalance, color: "#FBBF24" },
-    { key: "Invested", value: investedAmount, color: "#10B981" },
+    ...stockHoldings.map((holding, index) => ({
+      key: `${holding.symbol}`,
+      value: holding.current_value,
+      color: stockColors[index % stockColors.length],
+      percentage: holding.percentage,
+    })),
   ];
 
   // Modals
@@ -198,9 +261,10 @@ export default function RanchScreen() {
       if (response.ok) {
         const data = await response.json();
         console.log("✅ Group data fetched:", data);
-        setRanchBalance(data.group?.balance || data.balance || 0);
-        setInvestedAmount(data.group?.investedAmount || 0);
-        setTotalAssets(data.group?.totalAssets || data.group?.balance || 0);
+        setRanchBalance(Math.round((data.group?.balance || data.balance || 0) * 100) / 100);
+        setInvestedAmount(Math.round((data.group?.investedAmount || 0) * 100) / 100);
+        setTotalAssets(Math.round((data.group?.totalAssets || data.group?.balance || 0) * 100) / 100);
+        setGroupOwnerId(data.group?.createdBy || null);
         const membersArr: string[] = data.group?.members || [];
         setMemberList(membersArr);
         setMemberCount(membersArr.length || 0);
@@ -514,8 +578,124 @@ export default function RanchScreen() {
     }
   };
 
-  const handleDelete = () =>
-    Alert.alert("Delete Ranch", `Are you sure you want to delete ${name}?`);
+  const handleDelete = async () => {
+    const confirmDelete =
+      Platform.OS === "web"
+        ? window.confirm(
+            `Are you sure you want to delete ${name}? This action cannot be undone.`
+          )
+        : await new Promise((resolve) => {
+            Alert.alert(
+              "Delete Ranch",
+              `Are you sure you want to delete ${name}? This action cannot be undone.`,
+              [
+                { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: () => resolve(true),
+                },
+              ]
+            );
+          });
+
+    if (!confirmDelete) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/groups/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+
+      if (response.ok) {
+        if (Platform.OS === "web") {
+          window.alert("Ranch deleted successfully");
+        } else {
+          Alert.alert("Success", "Ranch deleted successfully");
+        }
+        router.replace("/(tabs)");
+      } else {
+        const error = await response.json();
+        if (Platform.OS === "web") {
+          window.alert(error.detail || "Failed to delete ranch");
+        } else {
+          Alert.alert("Error", error.detail || "Failed to delete ranch");
+        }
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      if (Platform.OS === "web") {
+        window.alert("Network error occurred");
+      } else {
+        Alert.alert("Error", "Network error occurred");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLeave = async () => {
+    const confirmLeave =
+      Platform.OS === "web"
+        ? window.confirm(`Are you sure you want to leave ${name}?`)
+        : await new Promise((resolve) => {
+            Alert.alert(
+              "Leave Ranch",
+              `Are you sure you want to leave ${name}?`,
+              [
+                { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+                {
+                  text: "Leave",
+                  style: "destructive",
+                  onPress: () => resolve(true),
+                },
+              ]
+            );
+          });
+
+    if (!confirmLeave) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/groups/${id}/members/${currentUserId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        if (Platform.OS === "web") {
+          window.alert("You have left the ranch");
+        } else {
+          Alert.alert("Success", "You have left the ranch");
+        }
+        router.back();
+      } else {
+        const error = await response.json();
+        if (Platform.OS === "web") {
+          window.alert(error.detail || "Failed to leave ranch");
+        } else {
+          Alert.alert("Error", error.detail || "Failed to leave ranch");
+        }
+      }
+    } catch (error) {
+      console.error("Leave error:", error);
+      if (Platform.OS === "web") {
+        window.alert("Network error occurred");
+      } else {
+        Alert.alert("Error", "Network error occurred");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDeposit = () => setDepositModalVisible(true);
 
@@ -775,7 +955,7 @@ export default function RanchScreen() {
             </ThemedText>
             <View style={styles.balanceContainer}>
               <ThemedText type="subtitle" style={styles.totalAssetsText}>
-                Total Assets: ${totalAssets.toLocaleString()}
+                Total Assets: ${formatMoney(totalAssets)}
               </ThemedText>
               <View style={styles.balanceBreakdown}>
                 <View style={styles.balanceRow}>
@@ -783,7 +963,7 @@ export default function RanchScreen() {
                     💵 Liquid Cash:
                   </ThemedText>
                   <ThemedText style={styles.balanceValue}>
-                    ${ranchBalance.toLocaleString()}
+                    ${formatMoney(ranchBalance)}
                   </ThemedText>
                 </View>
                 <View style={styles.balanceRow}>
@@ -791,13 +971,13 @@ export default function RanchScreen() {
                     📈 Invested:
                   </ThemedText>
                   <ThemedText style={styles.balanceValueInvested}>
-                    ${investedAmount.toLocaleString()}
+                    ${formatMoney(investedAmount)}
                   </ThemedText>
                 </View>
               </View>
             </View>
             <ThemedText style={styles.personalBalance}>
-              💰 Your Available Balance: ${personalBalance.toLocaleString()}
+              💰 Your Available Balance: ${formatMoney(personalBalance)}
             </ThemedText>
           </ThemedView>
 
@@ -852,7 +1032,7 @@ export default function RanchScreen() {
                   >
                     <View style={styles.proposalHeader}>
                       <ThemedText style={styles.proposalAmount}>
-                        ${parseFloat(proposal.amount).toLocaleString()}
+                        ${formatMoney(parseFloat(proposal.amount))}
                       </ThemedText>
                       <View
                         style={[
@@ -1035,7 +1215,7 @@ export default function RanchScreen() {
                   >
                     <View style={styles.ledgerHeader}>
                       <ThemedText style={styles.ledgerAmount}>
-                        ${transaction.amount.toLocaleString()}
+                        ${formatMoney(parseFloat(transaction.amount))}
                       </ThemedText>
                       <ThemedText style={styles.ledgerDate}>
                         {executedDate}
@@ -1073,11 +1253,17 @@ export default function RanchScreen() {
                   color: "#8B5CF6",
                   onPress: () => setManageMembersModalVisible(true),
                 },
-                {
-                  label: "Delete Ranch",
-                  color: "#EF4444",
-                  onPress: handleDelete,
-                },
+                currentUserId === groupOwnerId
+                  ? {
+                      label: "Delete Ranch",
+                      color: "#EF4444",
+                      onPress: handleDelete,
+                    }
+                  : {
+                      label: "Leave Ranch",
+                      color: "#F97316",
+                      onPress: handleLeave,
+                    },
               ].map((btn) => (
                 <TouchableOpacity
                   key={btn.label}

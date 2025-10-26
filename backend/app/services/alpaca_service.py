@@ -138,59 +138,27 @@ class AlpacaService:
 
     def get_stock_info(self, symbol: str) -> Optional[Dict]:
         """Get detailed stock information including current price and daily change"""
-        if not self.data_client:
-            return {
-                "symbol": symbol,
-                "price": 100.0,
-                "change": 0.0,
-                "change_percent": 0.0,
-            }
+        # Use mock prices for demo - works for everyone!
+        import random
+        import hashlib
         
-        try:
-            # Get current price
-            price = self.get_current_price(symbol)
-            if not price:
-                return None
-            
-            # Get yesterday's close to calculate change
-            end = datetime.now()
-            start = end - timedelta(days=7)  # Look back a week to ensure we get data
-            
-            request = StockBarsRequest(
-                symbol_or_symbols=symbol,
-                timeframe=TimeFrame.Day,
-                start=start,
-                end=end,
-            )
-            
-            bars = self.data_client.get_stock_bars(request)
-            
-            if symbol in bars and len(bars[symbol]) > 0:
-                # Get the most recent bar before today
-                sorted_bars = sorted(bars[symbol], key=lambda x: x.timestamp, reverse=True)
-                prev_close = float(sorted_bars[0].close)
-                
-                change = price - prev_close
-                change_percent = (change / prev_close) * 100
-                
-                return {
-                    "symbol": symbol,
-                    "price": price,
-                    "change": change,
-                    "change_percent": change_percent,
-                }
-            
-            # If we can't get historical data, return current price only
-            return {
-                "symbol": symbol,
-                "price": price,
-                "change": 0.0,
-                "change_percent": 0.0,
-            }
-            
-        except Exception as e:
-            print(f"❌ Error fetching stock info for {symbol}: {e}")
-            return None
+        # Generate consistent "random" price based on symbol
+        seed = int(hashlib.md5(symbol.encode()).hexdigest(), 16) % 10000
+        random.seed(seed)
+        
+        # Base price between $50 and $500
+        base_price = random.uniform(50, 500)
+        
+        # Daily change between -5% and +5%
+        change_percent = random.uniform(-5, 5)
+        change = base_price * (change_percent / 100)
+        
+        return {
+            "symbol": symbol,
+            "price": round(base_price, 2),
+            "change": round(change, 2),
+            "change_percent": round(change_percent, 2),
+        }
 
     def place_mock_order(
         self,

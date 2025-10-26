@@ -3,10 +3,11 @@ Group/Ranch routes
 Handles group creation, membership, and management
 """
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List
+from typing import List, Dict
 from ..models import GroupCreate, GroupResponse, AddMemberRequest
 from ..auth import verify_token
-from ..db import groups, users
+from ..db import groups, users, transactions
+from ..services.alpaca_service import alpaca_service
 
 router = APIRouter(prefix="/groups", tags=["Groups"])
 
@@ -102,6 +103,78 @@ def get_group_details(group_id: str, token: dict = Depends(verify_token)):
     group_with_members["totalAssets"] = liquid_balance + invested
     
     return {"group": group_with_members}
+
+
+@router.get("/{group_id}/holdings", response_model=dict)
+def get_group_holdings(group_id: str, token: dict = Depends(verify_token)):
+    """
+    Get detailed stock holdings breakdown for a group
+    
+    - Returns individual stock holdings with current values
+    - Calculates percentages of total portfolio
+    - Must be a member to view
+    """
+    user_id = token["sub"]
+    
+    # Check membership
+    if not groups.is_member(group_id, user_id):
+        raise HTTPException(403, "You are not a member of this group")
+    
+    # Get all executed transactions for this group
+    all_transactions = transactions.get_group_transactions(group_id)
+    executed_txns = [t for t in all_transactions if t.get("status") == "executed"]
+    
+    # Build holdings dictionary: {symbol: {quantity, total_cost}}
+    holdings: Dict[str, Dict] = {}
+    
+    for txn in executed_txns:
+        metadata = txn.get("metadata", {})
+        if metadata.get("stock_symbol"):
+            symbol = metadata["stock_symbol"]
+            quantity = float(metadata.get("quantity", 0))
+            
+            if symbol not in holdings:
+                holdings[symbol] = {"quantity": 0, "name": metadata.get("stock_name", symbol)}
+            
+            holdings[symbol]["quantity"] += quantity
+    
+    # Get current prices and calculate values
+    holdings_list = []
+    total_value = 0
+    
+    for symbol, data in holdings.items():
+        if data["quantity"] > 0:  # Only include positions we still hold
+            stock_info = alpaca_service.get_stock_info(symbol)
+            if stock_info:
+                current_price = stock_info["price"]
+                current_value = data["quantity"] * current_price
+                total_value += current_value
+                
+                holdings_list.append({
+                    "symbol": symbol,
+                    "name": data["name"],
+                    "quantity": data["quantity"],
+                    "current_price": current_price,
+                    "current_value": current_value,
+                })
+    
+    # Calculate percentages
+    for holding in holdings_list:
+        holding["percentage"] = (holding["current_value"] / total_value * 100) if total_value > 0 else 0
+    
+    # Sort by value descending
+    holdings_list.sort(key=lambda x: x["current_value"], reverse=True)
+    
+    # Get group info for liquid balance
+    group = groups.get_group(group_id)
+    liquid_balance = float(group.get("balance", 0)) if group else 0
+    
+    return {
+        "holdings": holdings_list,
+        "total_invested_value": total_value,
+        "liquid_balance": liquid_balance,
+        "total_assets": total_value + liquid_balance
+    }
 
 
 @router.get("/{group_id}/members", response_model=dict)
@@ -226,6 +299,38 @@ def remove_member(
     users.remove_group_from_user(user_id_to_remove, group_id)
     
     return {"message": "Member removed successfully"}
+
+
+@router.delete("/{group_id}", response_model=dict)
+def delete_group(
+    group_id: str,
+    token: dict = Depends(verify_token)
+):
+    """
+    Delete a group (owner only)
+    
+    - Only the owner can delete the group
+    - Removes the group from all members' group lists
+    """
+    user_id = token["sub"]
+    
+    # Get group
+    group = groups.get_group(group_id)
+    if not group:
+        raise HTTPException(404, "Group not found")
+    
+    # Check if user is the owner
+    if not groups.is_owner(group_id, user_id):
+        raise HTTPException(403, "Only the owner can delete the group")
+    
+    # Remove group from all members
+    for member_id in group.get("members", []):
+        users.remove_group_from_user(member_id, group_id)
+    
+    # Delete the group
+    groups.delete_group(group_id)
+    
+    return {"message": "Group deleted successfully"}
 
 
 @router.post("/{group_id}/deposit", response_model=dict)
