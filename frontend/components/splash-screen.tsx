@@ -2,7 +2,31 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet } from 'react-native';
 
 const AnimatedImage = Animated.Image;
-const LinearGradient = (props) => {
+
+interface LinearGradientProps {
+  colors: string[];
+  style?: object;
+  [key: string]: any;
+}
+
+interface RadialGradientProps {
+  colors: string[];
+  style?: object;
+  center: { x: number; y: number };
+  radius?: [number, number];
+  [key: string]: any;
+}
+
+interface Star {
+  id: number;
+  x: string;
+  y: string;
+  size: number;
+  delay: number;
+  duration: number;
+}
+
+const LinearGradient: React.FC<LinearGradientProps> = (props) => {
   const { colors, style, ...rest } = props;
   const webStyle = {
     background: `linear-gradient(${colors.join(',')})`,
@@ -11,7 +35,7 @@ const LinearGradient = (props) => {
   return <div style={webStyle} {...rest} />;
 };
 
-const RadialGradient = (props) => {
+const RadialGradient: React.FC<RadialGradientProps> = (props) => {
   const { colors, style, center, radius, ...rest } = props;
   const webStyle = {
     background: `radial-gradient(circle at ${center.x * 100}% ${center.y * 100}%, ${colors.join(',')})`,
@@ -20,8 +44,7 @@ const RadialGradient = (props) => {
   return <div style={webStyle} {...rest} />;
 };
 
-const generateStars = (count) => {
-  const stars = [];
+const generateStars = (count: number): Star[] => {  const stars = [];
   for (let i = 0; i < count; i++) {
     stars.push({
       id: i,
@@ -101,19 +124,19 @@ export default function SplashScreen() {
     >
       {starsData.map((star, index) => (
         <Animated.View
-          key={star.id}
-          style={[
+            key={star.id}
+            style={[
             styles.star,
             {
-              left: star.x,
-              top: star.y,
-              width: star.size,
-              height: star.size,
-              opacity: starOpacities[index],
+                left: star.x as `${number}%`, // <-- Tell TS this is a percentage string
+                top: star.y as `${number}%`,  // <-- Tell TS this is a percentage string
+                width: star.size,
+                height: star.size,
+                opacity: starOpacities[index],
             },
-          ]}
+            ]}
         />
-      ))}
+        ))}
 
       <Animated.View
         style={[
