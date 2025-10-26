@@ -5,15 +5,15 @@
 
 import React, { useState } from 'react';
 import {
-  Alert,
-  Modal,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
+    Alert,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';

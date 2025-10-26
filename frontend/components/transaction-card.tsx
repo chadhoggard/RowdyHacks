@@ -3,11 +3,11 @@
  * Displays a transaction with voting buttons and status
  */
 
+import type { Transaction } from '@/api/transactions';
 import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
-import type { Transaction } from '@/api/transactions';
 
 interface TransactionCardProps {
   transaction: Transaction;

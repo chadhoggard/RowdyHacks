@@ -1,8 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
-import React, { useState, useEffect, useCallback } from 'react';
-import { Alert, FlatList, Modal, StyleSheet, TextInput, TouchableOpacity, View, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Modal, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
 
 const API_BASE_URL = 'http://localhost:8080';
