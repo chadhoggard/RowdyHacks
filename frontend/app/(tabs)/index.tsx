@@ -163,7 +163,7 @@ export default function HomeScreen() {
         <ThemedView style={[styles.sectionContainer, styles.tipContainer]}>
           <ThemedText type="subtitle">💡 Pro Tip</ThemedText>
           <ThemedText style={styles.tipText}>
-            Tap a ranch to view its detailed portfolio, or tap "+" to start a new investment group with your partners.
+            Tap a ranch to view its detailed portfolio, or tap + to start a new investment group with your partners.
           </ThemedText>
         </ThemedView>
 

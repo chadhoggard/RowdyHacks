@@ -349,7 +349,7 @@ export default function RanchScreen() {
           </ThemedText>
           {proposals.length === 0 ? (
             <ThemedText style={styles.emptyText}>
-              No proposals yet. Click "Invest" to create one!
+              No proposals yet. Click Invest to create one!
             </ThemedText>
           ) : (
             proposals.map((proposal) => {
