@@ -24,7 +24,12 @@ export default function RanchScreen() {
   }>();
 
   const ranchBalance = Number(balance);
-  const [memberList, setMemberList] = useState(members ? members.split(',') : ['No members yet']);
+  const [memberList, setMemberList] = useState<string[]>([]);
+
+  // Update member list whenever the 'members' param changes
+  React.useEffect(() => {
+    setMemberList(members ? members.split(',') : ['No members yet']);
+  }, [members]);
 
   const investments = [
     { key: 'Liquid', value: ranchBalance * 0.3, color: '#FBBF24' },
