@@ -1366,7 +1366,9 @@ export default function RanchScreen() {
               keyExtractor={(item, idx) => idx.toString()}
               renderItem={({ item }) => (
                 <View style={styles.memberActionRow}>
-                  <ThemedText>👨‍🚀 {item}</ThemedText>
+                  <ThemedText>
+                    👨‍🚀 {memberProfiles[item] ? memberProfiles[item] : item}
+                  </ThemedText>
                   <View style={styles.memberButtons}>
                     <TouchableOpacity
                       onPress={() => handleKickMember(item)}
