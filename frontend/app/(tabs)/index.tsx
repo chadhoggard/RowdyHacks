@@ -14,7 +14,21 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+
+const API_BASE_URL = 'http://localhost:8080';
+
+// Helper function to get data (works on web and native)
+const getData = async (key: string) => {
+  if (Platform.OS === 'web') {
+    return localStorage.getItem(key);
+  } else {
+    return await SecureStore.getItemAsync(key);
+  }
+};
 
 interface Ranch {
   id: string;
@@ -43,6 +57,7 @@ export default function HomeScreen() {
   const [ranches, setRanches] = useState<Ranch[]>([addButton]);
   const [addRanchModalVisible, setAddRanchModalVisible] = useState(false);
   const [newRanchName, setNewRanchName] = useState('');
+  const [loading, setLoading] = useState(false);
   
   const breakpoint = 768;
   const numColumns = width < breakpoint ? 1 : 2;
@@ -58,24 +73,67 @@ export default function HomeScreen() {
     });
   };
 
-  const handleAddNewRanch = () => {
+  const handleAddNewRanch = async () => {
     if (!newRanchName.trim()) {
       Alert.alert('Error', 'Please enter a name for your ranch.');
       return;
     }
-    const newRanch: Ranch = {
-      id: Math.random().toString(36).substring(7),
-      name: newRanchName.trim(),
-      balance: 0,
-      members: ['You'],
-    };
-    setRanches(prevRanches => [
-      addButton, 
-      newRanch, 
-      ...prevRanches.slice(1)
-    ]);
-    setNewRanchName('');
-    setAddRanchModalVisible(false);
+
+    setLoading(true);
+    try {
+      const token = await getData('authToken');
+      const userId = await getData('userId');
+
+      if (!token || !userId) {
+        Alert.alert('Error', 'You must be logged in to create a ranch');
+        return;
+      }
+
+      console.log('Creating ranch:', newRanchName);
+      const response = await fetch(`${API_BASE_URL}/groups`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: newRanchName.trim(),
+          createdBy: userId,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Ranch created:', data);
+        
+        // Add the new ranch to the list
+        const newRanch: Ranch = {
+          id: data.groupID,
+          name: data.name,
+          balance: data.balance || 0,
+          members: data.members || [userId],
+        };
+        
+        setRanches(prevRanches => [
+          addButton, 
+          newRanch, 
+          ...prevRanches.slice(1)
+        ]);
+        
+        setNewRanchName('');
+        setAddRanchModalVisible(false);
+        Alert.alert('Success!', `Ranch "${data.name}" created!`);
+      } else {
+        const error = await response.text();
+        console.error('❌ Failed to create ranch:', error);
+        Alert.alert('Error', 'Failed to create ranch. Please try again.');
+      }
+    } catch (error) {
+      console.error('❌ Error creating ranch:', error);
+      Alert.alert('Error', 'Network error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -182,11 +240,23 @@ export default function HomeScreen() {
               onChangeText={setNewRanchName}
             />
             <View style={styles.modalButtons}>
-              <TouchableOpacity onPress={() => setAddRanchModalVisible(false)} style={styles.modalBtnCancel}>
+              <TouchableOpacity 
+                onPress={() => setAddRanchModalVisible(false)} 
+                style={styles.modalBtnCancel}
+                disabled={loading}
+              >
                 <ThemedText style={styles.modalBtnText}>Cancel</ThemedText>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleAddNewRanch} style={styles.modalBtnCreate}>
-                <ThemedText style={styles.modalBtnText}>Create</ThemedText>
+              <TouchableOpacity 
+                onPress={handleAddNewRanch} 
+                style={styles.modalBtnCreate}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <ThemedText style={styles.modalBtnText}>Create</ThemedText>
+                )}
               </TouchableOpacity>
             </View>
           </ThemedView>

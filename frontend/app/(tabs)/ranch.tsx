@@ -44,8 +44,10 @@ export default function RanchScreen() {
     members: string;
   }>();
 
+  console.log('🏠 Ranch screen loaded with params:', { id, name, balance, members });
+
   const [ranchBalance, setRanchBalance] = useState(Number(balance));
-  const [memberList, setMemberList] = useState(members ? members.split(',') : ['No members yet']);
+  const [memberList, setMemberList] = useState<string[]>(members ? members.split(',') : []);
   const [memberCount, setMemberCount] = useState(members ? members.split(',').length : 1);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,6 +75,7 @@ export default function RanchScreen() {
   const fetchGroupData = async () => {
     if (!id) return;
     try {
+      console.log('🔍 Fetching group data for:', id);
       const response = await fetch(`${API_BASE_URL}/groups/${id}`, {
         headers: {
           'Authorization': `Bearer ${DEMO_TOKEN}`,
@@ -80,10 +83,20 @@ export default function RanchScreen() {
       });
       if (response.ok) {
         const data = await response.json();
+        console.log('📦 Group data received:', data);
         setRanchBalance(data.group?.balance || data.balance);
         if (data.group?.memberDetails) {
+          console.log('👥 Member details:', data.group.memberDetails);
           setMemberCount(data.group.memberDetails.length);
+          // Update member list with usernames instead of IDs
+          const usernames = data.group.memberDetails.map((member: any) => member.username || 'Unknown');
+          console.log('✅ Setting member list to:', usernames);
+          setMemberList(usernames);
+        } else {
+          console.log('⚠️ No memberDetails in response');
         }
+      } else {
+        console.log('❌ Failed to fetch group data:', response.status);
       }
     } catch (error) {
       console.error('Failed to fetch group balance:', error);
@@ -464,12 +477,16 @@ export default function RanchScreen() {
 
       {/* Members */}
       <ThemedView style={styles.section}>
-        <ThemedText type="subtitle">Members ({memberList.length})</ThemedText>
-        <FlatList
-          data={memberList}
-          keyExtractor={(item, idx) => idx.toString()}
-          renderItem={({ item }) => <ThemedText>👨‍🚀 {item}</ThemedText>}
-        />
+        <ThemedText type="subtitle">Members ({memberList.length || memberCount})</ThemedText>
+        {memberList.length > 0 ? (
+          <FlatList
+            data={memberList}
+            keyExtractor={(item, idx) => idx.toString()}
+            renderItem={({ item }) => <ThemedText>👨‍🚀 {item}</ThemedText>}
+          />
+        ) : (
+          <ThemedText>Loading members...</ThemedText>
+        )}
       </ThemedView>
 
       {/* Actions */}
