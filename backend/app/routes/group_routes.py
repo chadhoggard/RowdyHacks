@@ -90,6 +90,15 @@ def get_group_details(group_id: str, token: dict = Depends(verify_token)):
     group_with_members = dict(group)
     group_with_members["memberDetails"] = member_details
     
+    # Ensure investedAmount exists (for backwards compatibility with old groups)
+    if "investedAmount" not in group_with_members:
+        group_with_members["investedAmount"] = 0
+    
+    # Add total assets calculation
+    liquid_balance = float(group_with_members.get("balance", 0))
+    invested = float(group_with_members.get("investedAmount", 0))
+    group_with_members["totalAssets"] = liquid_balance + invested
+    
     return {"group": group_with_members}
 
 
@@ -251,8 +260,15 @@ def deposit_to_group(
     # Update balance
     groups.update_balance(group_id, amount)
     
+    # Get updated group info
+    updated_group = groups.get_group(group_id)
+    liquid_balance = float(updated_group.get("balance", 0))
+    invested = float(updated_group.get("investedAmount", 0))
+    
     return {
         "message": "Deposit successful",
         "amount": amount,
-        "newBalance": groups.get_balance(group_id)
+        "newBalance": liquid_balance,
+        "investedAmount": invested,
+        "totalAssets": liquid_balance + invested
     }

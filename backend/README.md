@@ -4,6 +4,67 @@
 
 ### **First Time Setup (Your Friend's Computer)**
 
+#### **For Windows Users:**
+
+1. **Clone the repository**
+   ```cmd
+   git clone https://github.com/chadhoggard/RowdyHacks.git
+   cd RowdyHacks\backend
+   ```
+
+2. **Run the installation script**
+   ```cmd
+   install_windows.bat
+   ```
+   
+   This will:
+   - Check if Python is installed
+   - Create a virtual environment
+   - Install all dependencies
+   - Create .env file from template
+
+3. **Edit .env file**
+   
+   Open `.env` in Notepad and add your AWS credentials:
+   ```bash
+   AWS_ACCESS_KEY_ID=your_access_key_here
+   AWS_SECRET_ACCESS_KEY=your_secret_key_here
+   AWS_REGION=us-east-1
+   
+   # Table Names (use these exact names)
+   USERS_TABLE=Users
+   GROUPS_TABLE=Groups
+   TRANSACTIONS_TABLE=Transactions
+   INVITES_TABLE=Invites
+   
+   # JWT Secret (can be any random string)
+   JWT_SECRET=your-random-secret-here
+   ```
+
+4. **Initialize Database Tables** (First time only)
+   ```cmd
+   .venv\Scripts\python.exe -m app.init_tables
+   ```
+
+5. **Start the Server**
+   ```cmd
+   setup_local.bat
+   ```
+   
+   Or using PowerShell:
+   ```powershell
+   .\setup_local.ps1
+   ```
+
+6. **Test the API**
+   - Open browser: http://localhost:8080/docs
+   - Try the `/health` endpoint
+   - Try creating a test account with `/auth/signup`
+
+---
+
+#### **For Linux/Mac Users:**
+
 1. **Clone the repository**
    ```bash
    git clone https://github.com/chadhoggard/RowdyHacks.git
@@ -43,25 +104,16 @@
    ./setup_local.sh
    
    # Or manually:
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   python3 -m venv .venv
+   source .venv/bin/activate
    pip install -r requirements.txt
    ```
 
 5. **Initialize Database Tables** (First time only)
    ```bash
-   python -m app.init_tables
+   python3 -m app.init_tables
    ```
-   
-   You should see:
-   ```
-   ✅ Table 'Users' exists or was created
-   ✅ Table 'Groups' exists or was created
-   ✅ Table 'Transactions' exists or was created
-   ✅ Table 'Invites' exists or was created
-   ```
-
-6. **Start the Server**
+   6. **Start the Server**
    ```bash
    # Using the setup script:
    ./setup_local.sh
@@ -75,6 +127,8 @@
    - Open browser: http://localhost:8080/docs
    - Try the `/health` endpoint
    - Try creating a test account with `/auth/signup`
+
+---
 
 ### **Common Errors and Solutions**
 

@@ -28,6 +28,7 @@ def create_group(owner_id: str, name: str) -> dict:
         "createdBy": owner_id,
         "createdAt": datetime.datetime.utcnow().isoformat(),
         "balance": Decimal('0'),
+        "investedAmount": Decimal('0'),
         "status": "active",
         "memberCount": 1
     }
@@ -93,7 +94,7 @@ def is_owner(group_id: str, user_id: str) -> bool:
 
 
 def update_balance(group_id: str, amount: float):
-    """Update group balance"""
+    """Update group liquid balance (cash available for withdrawal)"""
     groups_table.update_item(
         Key={"groupID": group_id},
         UpdateExpression="SET balance = balance + :amount",
@@ -101,7 +102,32 @@ def update_balance(group_id: str, amount: float):
     )
 
 
+def update_invested_amount(group_id: str, amount: float):
+    """Update group invested amount (assets locked in investments)"""
+    groups_table.update_item(
+        Key={"groupID": group_id},
+        UpdateExpression="SET investedAmount = investedAmount + :amount",
+        ExpressionAttributeValues={":amount": Decimal(str(amount))}
+    )
+
+
 def get_balance(group_id: str) -> float:
-    """Get current group balance"""
+    """Get current group liquid balance"""
     group = get_group(group_id)
     return group.get("balance", 0.0) if group else 0.0
+
+
+def get_invested_amount(group_id: str) -> float:
+    """Get current group invested amount"""
+    group = get_group(group_id)
+    return group.get("investedAmount", 0.0) if group else 0.0
+
+
+def get_total_assets(group_id: str) -> float:
+    """Get total assets (liquid + invested)"""
+    group = get_group(group_id)
+    if not group:
+        return 0.0
+    liquid = float(group.get("balance", 0))
+    invested = float(group.get("investedAmount", 0))
+    return liquid + invested

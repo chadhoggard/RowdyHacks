@@ -54,7 +54,9 @@ export default function RanchScreen() {
 
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [ranchBalance, setRanchBalance] = useState(Number(balance));
+  const [ranchBalance, setRanchBalance] = useState(Number(balance)); // Liquid cash
+  const [investedAmount, setInvestedAmount] = useState(0); // Locked in investments
+  const [totalAssets, setTotalAssets] = useState(Number(balance)); // Total = liquid + invested
   const [memberList, setMemberList] = useState<string[]>(members ? members.split(',') : []);
   const [memberCount, setMemberCount] = useState(members ? members.split(',').length : 1);
   const [loading, setLoading] = useState(false);
@@ -89,17 +91,39 @@ export default function RanchScreen() {
       console.log('✅ Auth token loaded, fetching data...');
       fetchGroupData();
       fetchProposals();
+      fetchPersonalBalance();
     }
   }, [authToken, id]);
 
-  const investments = [
-    { key: 'Liquid', value: ranchBalance * 0.3, color: '#FBBF24' },
-    { key: 'CD', value: ranchBalance * 0.4, color: '#10B981' },
-    { key: 'ETFs', value: ranchBalance * 0.2, color: '#3B82F6' },
-    { key: 'Misc', value: ranchBalance * 0.1, color: '#A78BFA' },
-  ];
+  // Fetch user's personal balance (total invested across all groups)
+  const fetchPersonalBalance = async () => {
+    if (!authToken) {
+      console.log('⚠️ No auth token yet, skipping personal balance fetch');
+      return;
+    }
+    try {
+      console.log('🔍 Fetching personal balance...');
+      const response = await fetch(`${API_BASE_URL}/users/me`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ User data fetched:', data);
+        setPersonalBalance(data.totalInvested || 0);
+      } else {
+        console.log('❌ Failed to fetch personal balance:', response.status);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching personal balance:', error);
+    }
+  };
 
-  let startAngle = 0;
+  const investments = [
+    { key: 'Liquid Cash', value: ranchBalance, color: '#FBBF24' },
+    { key: 'Invested', value: investedAmount, color: '#10B981' },
+  ];
 
   // Modals
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
@@ -128,18 +152,12 @@ export default function RanchScreen() {
       });
       if (response.ok) {
         const data = await response.json();
-        console.log('📦 Group data received:', data);
-        setRanchBalance(data.group?.balance || data.balance);
-        if (data.group?.memberDetails) {
-          console.log('👥 Member details:', data.group.memberDetails);
-          setMemberCount(data.group.memberDetails.length);
-          // Update member list with usernames instead of IDs
-          const usernames = data.group.memberDetails.map((member: any) => member.username || 'Unknown');
-          console.log('✅ Setting member list to:', usernames);
-          setMemberList(usernames);
-        } else {
-          console.log('⚠️ No memberDetails in response');
-        }
+        console.log('✅ Group data fetched:', data);
+        setRanchBalance(data.group?.balance || data.balance || 0);
+        setInvestedAmount(data.group?.investedAmount || 0);
+        setTotalAssets(data.group?.totalAssets || (data.group?.balance || 0));
+        setMemberList(data.group?.members || []);
+        setMemberCount(data.group?.members?.length || 0);
       } else {
         console.log('❌ Failed to fetch group data:', response.status);
       }
@@ -190,7 +208,7 @@ export default function RanchScreen() {
   // Refresh all data
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchGroupData(), fetchProposals()]);
+    await Promise.all([fetchGroupData(), fetchProposals(), fetchPersonalBalance()]);
     setRefreshing(false);
   };
 
@@ -199,6 +217,7 @@ export default function RanchScreen() {
     useCallback(() => {
       fetchGroupData();
       fetchProposals();
+      fetchPersonalBalance();
     }, [id])
   );
 
@@ -475,7 +494,13 @@ export default function RanchScreen() {
 
   // Execute an approved proposal
   const handleExecute = async (transactionId: string) => {
+    if (!authToken) {
+      Alert.alert('Error', 'Not authenticated. Please log in again.');
+      return;
+    }
+    
     try {
+      console.log('⚡ Executing transaction:', transactionId);
       const response = await fetch(`${API_BASE_URL}/transactions/${transactionId}/execute`, {
         method: 'POST',
         headers: {
@@ -484,14 +509,19 @@ export default function RanchScreen() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Transaction executed:', result);
         Alert.alert('Success! 🎉', 'Transaction executed successfully!');
         await fetchProposals();
         await fetchGroupData();
+        await fetchPersonalBalance(); // Update personal balance after execution
       } else {
         const error = await response.json();
+        console.error('❌ Execute failed:', error);
         Alert.alert('Error', error.detail || 'Failed to execute');
       }
     } catch (error) {
+      console.error('❌ Network error:', error);
       Alert.alert('Error', 'Network error occurred');
     }
   };
@@ -510,9 +540,23 @@ export default function RanchScreen() {
           <ThemedText type="title" style={styles.headerText}>
             🤠 {name} 🚀
           </ThemedText>
-          <ThemedText type="subtitle">Balance: ${ranchBalance.toLocaleString()}</ThemedText>
+          <View style={styles.balanceContainer}>
+            <ThemedText type="subtitle" style={styles.totalAssetsText}>
+              Total Assets: ${totalAssets.toLocaleString()}
+            </ThemedText>
+            <View style={styles.balanceBreakdown}>
+              <View style={styles.balanceRow}>
+                <ThemedText style={styles.balanceLabel}>💵 Liquid Cash:</ThemedText>
+                <ThemedText style={styles.balanceValue}>${ranchBalance.toLocaleString()}</ThemedText>
+              </View>
+              <View style={styles.balanceRow}>
+                <ThemedText style={styles.balanceLabel}>📈 Invested:</ThemedText>
+                <ThemedText style={styles.balanceValueInvested}>${investedAmount.toLocaleString()}</ThemedText>
+              </View>
+            </View>
+          </View>
           <ThemedText style={styles.personalBalance}>
-            Your Balance: ${personalBalance.toLocaleString()}
+            Your Total Invested: ${personalBalance.toLocaleString()}
           </ThemedText>
         </ThemedView>
 
@@ -616,24 +660,35 @@ export default function RanchScreen() {
       {/* Pie Chart */}
       <ThemedView style={styles.section}>
         <ThemedText type="subtitle">Ranch Balance Breakdown</ThemedText>
-        <Svg width={250} height={250} viewBox="0 0 250 250" style={{ alignSelf: 'center' }}>
-          <G rotation="-90" origin="125,125">
-            {investments.map((inv) => {
-              const angle = (inv.value / ranchBalance) * 2 * Math.PI;
-              const path = createArcPath(125, 125, 100, startAngle, startAngle + angle);
-              startAngle += angle;
-              return <Path key={inv.key} d={path} fill={inv.color} />;
-            })}
-          </G>
-        </Svg>
-        <View style={styles.legend}>
-          {investments.map((inv) => (
-            <View key={inv.key} style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: inv.color }]} />
-              <ThemedText>{inv.key}</ThemedText>
+        {totalAssets > 0 ? (
+          <>
+            <Svg width={250} height={250} viewBox="0 0 250 250" style={{ alignSelf: 'center' }}>
+              <G rotation="-90" origin="125,125">
+                {(() => {
+                  let currentAngle = 0;
+                  return investments.map((inv) => {
+                    const angle = (inv.value / totalAssets) * 2 * Math.PI;
+                    const path = createArcPath(125, 125, 100, currentAngle, currentAngle + angle);
+                    currentAngle += angle;
+                    return <Path key={inv.key} d={path} fill={inv.color} />;
+                  });
+                })()}
+              </G>
+            </Svg>
+            <View style={styles.legend}>
+              {investments.map((inv) => (
+                <View key={inv.key} style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: inv.color }]} />
+                  <ThemedText>{inv.key}: ${inv.value.toLocaleString()}</ThemedText>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+          </>
+        ) : (
+          <ThemedText style={styles.emptyText}>
+            No assets yet. Make a deposit to get started!
+          </ThemedText>
+        )}
       </ThemedView>
 
       {/* Members */}
@@ -944,6 +999,44 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.6 },
   contentContainer: { paddingBottom: 20 },
   personalBalance: { color: '#9CA3AF', fontSize: 14, marginTop: 4 },
+  balanceContainer: { 
+    marginVertical: 12, 
+    padding: 12, 
+    backgroundColor: '#1D1F33', 
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#374151'
+  },
+  totalAssetsText: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    color: '#FBBF24',
+    marginBottom: 8,
+    textAlign: 'center'
+  },
+  balanceBreakdown: { 
+    marginTop: 8 
+  },
+  balanceRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    paddingVertical: 6
+  },
+  balanceLabel: { 
+    fontSize: 14, 
+    color: '#9CA3AF' 
+  },
+  balanceValue: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#FBBF24' 
+  },
+  balanceValueInvested: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#10B981' 
+  },
   sectionTitle: { marginBottom: 12, fontSize: 18 },
   proposalCard: { 
     backgroundColor: '#0F1729', 
