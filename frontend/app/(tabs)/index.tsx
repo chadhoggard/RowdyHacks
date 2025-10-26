@@ -4,16 +4,16 @@ import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  Alert,
   FlatList,
   Image,
   ImageBackground,
+  Modal,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
   useWindowDimensions,
-  Modal,
-  TextInput,
   View,
-  Alert,
 } from 'react-native';
 
 interface Ranch {
@@ -186,7 +186,7 @@ export default function HomeScreen() {
             <ThemedText type="subtitle">Create a New Ranch</ThemedText>
             <TextInput
               style={styles.input}
-              placeholder="Ranch Name (e.g., 'Cosmic Corral')"
+              placeholder="Ranch Name (e.g., 'Ram Ranch')"
               placeholderTextColor="#9CA3AF"
               value={newRanchName}
               onChangeText={setNewRanchName}
@@ -219,6 +219,7 @@ const styles = StyleSheet.create({
   },
   row: {
     justifyContent: 'space-between',
+    alignItems: 'flex-start', // <-- CHANGE: Added this
   },
   ranchCard: {
     alignItems: 'center',
@@ -242,20 +243,20 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
     marginBottom: 12,
   },
-  // --- New Styles for Add Button ---
   addRanchCard: {
     backgroundColor: 'transparent',
     borderStyle: 'dashed',
     borderWidth: 2,
     borderColor: '#FFA500',
-    shadowOpacity: 0.3, 
+    shadowOpacity: 0.3,
+    minHeight: 'auto', // <-- CHANGE: Added this
+    height: 100, // <-- CHANGE: Added this
   },
   addRanchText: {
     fontSize: 48,
     color: '#FFA500',
     fontWeight: '300',
   },
-  // --- End New Styles ---
   logo: {
     height: 178,
     width: 290,
@@ -275,7 +276,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 8,
   },
-  // --- New Modal Styles ---
   modalBackground: { 
     flex: 1, 
     justifyContent: 'center', 
