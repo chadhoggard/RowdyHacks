@@ -3,7 +3,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Dimensions, FlatList, Image, ImageBackground, StyleSheet, TouchableOpacity } from 'react-native';
+// Import useWindowDimensions for responsiveness, remove Dimensions
+import { FlatList, Image, ImageBackground, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 
 interface Ranch {
   id: string;
@@ -12,9 +13,8 @@ interface Ranch {
   members: string[];
 }
 
-// Helper function to generate mock return data
 const getMockReturn = (id: string, balance: number) => {
-  const percent = (3 + parseInt(id)) / 100; // e.g., 4%, 5%, 6%, 7%
+  const percent = (3 + parseInt(id)) / 100;
   const amount = balance * percent;
   const percentString = (percent * 100).toFixed(1);
   return `+$${amount.toLocaleString()} (${percentString}%)`;
@@ -22,6 +22,13 @@ const getMockReturn = (id: string, balance: number) => {
 
 export default function HomeScreen() {
   const router = useRouter();
+  
+  // Get screen width dynamically
+  const { width } = useWindowDimensions();
+  
+  // Define breakpoint for mobile vs. desktop
+  const breakpoint = 768;
+  const numColumns = width < breakpoint ? 1 : 2;
 
   const ranches: Ranch[] = [
     { id: '1', name: 'Area 51 Ranch', balance: 5000, members: ['Alice', 'Bob', 'Charlie'] },
@@ -52,24 +59,26 @@ export default function HomeScreen() {
         </ImageBackground>
       }
     >
-      {/* Welcome title */}
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">🚀 PartnerInvest 🤠</ThemedText>
         <ThemedText type="subtitle">Yeehaw! Partner Up and Invest Together!</ThemedText>
       </ThemedView>
 
-      {/* Ranches grid */}
       <ThemedView style={styles.sectionContainer}>
         <ThemedText type="subtitle">YOUR RANCHES</ThemedText>
         <FlatList
+          key={numColumns} // Add key to force re-render on column change
           data={ranches}
           keyExtractor={(item) => item.id}
-          numColumns={2}
-          columnWrapperStyle={styles.row}
-          contentContainerStyle={{ paddingBottom: 16, paddingTop: 12 }} // Keep padding for glow
+          numColumns={numColumns}
+          columnWrapperStyle={numColumns > 1 ? styles.row : null} // Only apply row style in grid
+          contentContainerStyle={{ paddingBottom: 16, paddingTop: 12 }}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={styles.ranchCard}
+              style={[
+                styles.ranchCard,
+                numColumns > 1 ? styles.ranchCardGrid : styles.ranchCardList
+              ]}
               onPress={() => handlePressRanch(item)}
               activeOpacity={0.8}
             >
@@ -77,9 +86,11 @@ export default function HomeScreen() {
               <ThemedText>Balance: ${item.balance.toLocaleString()}</ThemedText>
               <ThemedText>Members: {Array.isArray(item.members) ? item.members.length : item.members}</ThemedText>
               
-              {/* --- CHANGE: Monthly Return added here --- */}
-              <ThemedText style={styles.returnText}>
-                📈 {getMockReturn(item.id, item.balance)}
+              <ThemedText>
+                Monthly Return:{' '}
+                <ThemedText style={styles.returnText}>
+                  {getMockReturn(item.id, item.balance)}
+                </ThemedText>
               </ThemedText>
 
             </TouchableOpacity>
@@ -87,11 +98,6 @@ export default function HomeScreen() {
         />
       </ThemedView>
 
-      {/* --- SECTION REMOVED ---
-        The separate "MONTHLY RETURN" list was here. I've removed it.
-      --- END OF REMOVAL --- */}
-
-      {/* Tip / guidance */}
       <ThemedView style={styles.sectionContainer}>
         <ThemedText type="subtitle">Tip</ThemedText>
         <ThemedText>
@@ -102,7 +108,7 @@ export default function HomeScreen() {
   );
 }
 
-const { width } = Dimensions.get('window');
+// Removed const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   titleContainer: {
@@ -117,27 +123,31 @@ const styles = StyleSheet.create({
   },
   row: {
     justifyContent: 'space-between',
-    marginBottom: 12,
   },
   ranchCard: {
-    flex: 1,
-    marginHorizontal: 4,
-    padding: 16,
+    alignItems: 'center',
     backgroundColor: '#1D1F33',
     borderRadius: 12,
-    alignItems: 'center',
-    
-    minHeight: 150, // Increased minHeight slightly to fit new text
     justifyContent: 'center',
-
-    // --- Static Glow (iOS ONLY) ---
+    minHeight: 150,
+    padding: 16,
+    
     shadowColor: '#FFA500',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.7,
     shadowRadius: 8,
-    
-    // --- Shadow Fallback (Android ONLY) ---
     elevation: 10,
+  },
+  // Style for grid (desktop)
+  ranchCardGrid: {
+    flex: 1,
+    marginHorizontal: 4,
+    marginBottom: 12,
+  },
+  // Style for list (mobile)
+  ranchCardList: {
+    marginHorizontal: 0,
+    marginBottom: 12,
   },
   logo: {
     height: 178,
@@ -153,11 +163,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // --- UPDATED/KEPT STYLE for inline return text ---
   returnText: {
-    color: '#32CD32', // Bright green
+    color: '#32CD32',
     fontWeight: 'bold',
-    marginTop: 8, // Adds space between members and return
+    marginTop: 8,
   },
-  // --- REMOVED STYLES: returnCard, returnLabel, returnIcon are no longer needed ---
 });
