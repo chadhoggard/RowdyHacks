@@ -34,7 +34,8 @@ def propose_transaction(body: TransactionCreate, token: dict = Depends(verify_to
         group_id=body.groupId,
         user_id=user_id,
         amount=body.amount,
-        description=body.description
+        description=body.description,
+        transaction_type=body.transactionType
     )
     
     return {
@@ -192,13 +193,15 @@ def execute_transaction(transaction_id: str, token: dict = Depends(verify_token)
     # Get current balance
     current_balance = float(group.get("balance", 0))
     transaction_amount = float(transaction["amount"])
+    transaction_type = transaction.get("transactionType", "investment")
     
-    # Determine if this is an investment (positive) or withdrawal (negative)
-    # Investment proposals: Move money from liquid balance to invested assets
-    # Withdrawal proposals: Deduct from liquid balance
+    # Execute based on transaction type:
+    # - investment: Move money from liquid balance to invested assets
+    # - withdrawal: Deduct from liquid balance (and eventually return to proposer)
+    # - deposit: Add to liquid balance (already handled separately)
     
-    if transaction_amount > 0:
-        # This is an INVESTMENT - move from liquid balance to invested amount
+    if transaction_type == "investment":
+        # INVESTMENT - move from liquid balance to invested amount
         # Check if there's enough liquid cash to invest
         if current_balance < transaction_amount:
             raise HTTPException(400, f"Insufficient liquid funds to invest (available: ${current_balance}, required: ${transaction_amount})")
@@ -210,13 +213,19 @@ def execute_transaction(transaction_id: str, token: dict = Depends(verify_token)
         
         new_balance = current_balance - transaction_amount
         invested_amount = float(group.get("investedAmount", 0)) + transaction_amount
-    else:
-        # This is a WITHDRAWAL - deduct from liquid balance
-        if current_balance < abs(transaction_amount):
-            raise HTTPException(400, f"Insufficient funds (balance: ${current_balance}, required: ${abs(transaction_amount)})")
-        groups.update_balance(group_id, transaction_amount)
-        new_balance = current_balance + transaction_amount  # transaction_amount is already negative
+        
+    elif transaction_type == "withdrawal":
+        # WITHDRAWAL - deduct from liquid balance
+        if current_balance < transaction_amount:
+            raise HTTPException(400, f"Insufficient liquid funds to withdraw (available: ${current_balance}, required: ${transaction_amount})")
+        
+        # Subtract from liquid balance
+        groups.update_balance(group_id, -transaction_amount)
+        new_balance = current_balance - transaction_amount
         invested_amount = float(group.get("investedAmount", 0))
+        
+    else:
+        raise HTTPException(400, f"Unknown transaction type: {transaction_type}")
     
     # Mark transaction as executed
     transactions.update_status(transaction_id, "executed")

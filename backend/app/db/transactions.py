@@ -9,7 +9,7 @@ from boto3.dynamodb.conditions import Key, Attr
 from .connection import transactions_table
 
 
-def create_transaction(group_id: str, user_id: str, amount: float, description: str) -> dict:
+def create_transaction(group_id: str, user_id: str, amount: float, description: str, transaction_type: str = "investment", metadata: dict = None) -> dict:
     """
     Create a new transaction proposal
     
@@ -18,6 +18,8 @@ def create_transaction(group_id: str, user_id: str, amount: float, description: 
         user_id: ID of user proposing the transaction
         amount: Transaction amount
         description: Description/reason for transaction
+        transaction_type: Type of transaction (investment, withdrawal, deposit)
+        metadata: Additional data (e.g., stock info for trades)
         
     Returns:
         dict: Created transaction item
@@ -30,10 +32,15 @@ def create_transaction(group_id: str, user_id: str, amount: float, description: 
         "amount": Decimal(str(amount)),
         "description": description,
         "proposedBy": user_id,
+        "transactionType": transaction_type,
         "status": "pending",
         "votes": {},
         "createdAt": datetime.datetime.utcnow().isoformat()
     }
+    
+    # Add metadata if provided (for stock trades, etc.)
+    if metadata:
+        item["metadata"] = metadata
     
     transactions_table.put_item(Item=item)
     return item

@@ -1,14 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import {
-  BalanceSection,
-  RanchPieChart,
-  ProposalCard,
-  LedgerSection,
-  MembersSection,
-  ActionButtonsSection,
-} from "@/components/ranch";
-import { StockTradingModal } from "@/components/StockTradingModal";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import React, { useCallback, useEffect, useState } from "react";
@@ -182,7 +173,6 @@ export default function RanchScreen() {
   const [manageMembersModalVisible, setManageMembersModalVisible] =
     useState(false);
   const [investModalVisible, setInvestModalVisible] = useState(false);
-  const [stockModalVisible, setStockModalVisible] = useState(false);
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
   const [depositModalVisible, setDepositModalVisible] = useState(false);
   const [transactionAmount, setTransactionAmount] = useState("");
@@ -326,61 +316,7 @@ export default function RanchScreen() {
     );
   }, [proposals]);
 
-  const handleInvest = () => setStockModalVisible(true);
-
-  const handleStockTrade = async (
-    symbol: string,
-    quantity: number,
-    stockName: string,
-    price: number
-  ) => {
-    if (!authToken) {
-      Alert.alert("Error", "Not authenticated. Please log in again.");
-      return;
-    }
-
-    try {
-      console.log("📈 Creating stock trade proposal:", {
-        symbol,
-        quantity,
-        stockName,
-        price,
-        groupId: id,
-      });
-
-      const response = await fetch(`${API_BASE_URL}/stocks/trade`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          symbol,
-          quantity,
-          group_id: id,
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log("✅ Trade proposal created:", result);
-        Alert.alert(
-          "Success! 📈",
-          `Trade proposal created: Buy ${quantity} shares of ${stockName} @ $${price.toFixed(2)}\n\nTotal: $${(quantity * price).toFixed(2)}\n\nGroup members can now vote on this proposal.`
-        );
-        await fetchProposals();
-        await fetchGroupData();
-      } else {
-        const error = await response.json();
-        console.error("❌ Trade failed:", error);
-        Alert.alert("Error", error.detail || "Failed to create trade proposal");
-      }
-    } catch (error) {
-      console.error("❌ Network error:", error);
-      Alert.alert("Error", "Network error occurred");
-      throw error; // Re-throw to let modal know it failed
-    }
-  };
+  const handleInvest = () => setInvestModalVisible(true);
 
   const handleInvestSubmit = async () => {
     console.log("🔵 handleInvestSubmit called");
@@ -1216,16 +1152,7 @@ export default function RanchScreen() {
         </ThemedView>
       </Modal>
 
-      {/* Stock Trading Modal */}
-      <StockTradingModal
-        visible={stockModalVisible}
-        onClose={() => setStockModalVisible(false)}
-        onTradeSubmit={handleStockTrade}
-        groupId={id || ""}
-        authToken={authToken || ""}
-      />
-
-      {/* Invest Modal (Legacy - keeping for backward compatibility) */}
+      {/* Invest Modal */}
       <Modal
         transparent
         animationType="slide"

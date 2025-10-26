@@ -157,8 +157,11 @@ def update_balance(group_id: str, amount: float):
     """Update group liquid balance (cash available for withdrawal)"""
     groups_table.update_item(
         Key={"groupID": group_id},
-        UpdateExpression="SET balance = balance + :amount",
-        ExpressionAttributeValues={":amount": Decimal(str(amount))}
+        UpdateExpression="SET balance = if_not_exists(balance, :zero) + :amount",
+        ExpressionAttributeValues={
+            ":amount": Decimal(str(amount)),
+            ":zero": Decimal('0')
+        }
     )
 
 
@@ -166,8 +169,11 @@ def update_invested_amount(group_id: str, amount: float):
     """Update group invested amount (assets locked in investments)"""
     groups_table.update_item(
         Key={"groupID": group_id},
-        UpdateExpression="SET investedAmount = investedAmount + :amount",
-        ExpressionAttributeValues={":amount": Decimal(str(amount))}
+        UpdateExpression="SET investedAmount = if_not_exists(investedAmount, :zero) + :amount",
+        ExpressionAttributeValues={
+            ":amount": Decimal(str(amount)),
+            ":zero": Decimal('0')
+        }
     )
 
 
