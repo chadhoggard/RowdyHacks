@@ -30,6 +30,7 @@ def create_group(body: GroupCreate, token: dict = Depends(verify_token)):
     return {
         "groupId": group["groupID"],
         "name": group["name"],
+        "memberCount": group.get("memberCount", len(group.get("members", []))),
         "message": "Group created successfully"
     }
 

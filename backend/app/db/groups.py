@@ -28,7 +28,8 @@ def create_group(owner_id: str, name: str) -> dict:
         "createdBy": owner_id,
         "createdAt": datetime.datetime.utcnow().isoformat(),
         "balance": Decimal('0'),
-        "status": "active"
+        "status": "active",
+        "memberCount": 1
     }
     
     groups_table.put_item(Item=item)
@@ -44,10 +45,11 @@ def get_group(group_id: str) -> dict:
 def add_member(group_id: str, user_id: str):
     """Add a member to the group"""
     try:
+        # Append to members list and increment memberCount atomically
         groups_table.update_item(
             Key={"groupID": group_id},
-            UpdateExpression="SET members = list_append(members, :new_member)",
-            ExpressionAttributeValues={":new_member": [user_id]}
+            UpdateExpression="SET members = list_append(if_not_exists(members, :empty_list), :new_member) ADD memberCount :inc",
+            ExpressionAttributeValues={":new_member": [user_id], ":empty_list": [], ":inc": 1}
         )
         return True
     except Exception as e:
@@ -64,10 +66,11 @@ def remove_member(group_id: str, user_id: str):
     members = group.get("members", [])
     if user_id in members:
         members.remove(user_id)
+        # Update members list and set memberCount to the new length
         groups_table.update_item(
             Key={"groupID": group_id},
-            UpdateExpression="SET members = :members",
-            ExpressionAttributeValues={":members": members}
+            UpdateExpression="SET members = :members, memberCount = :count",
+            ExpressionAttributeValues={":members": members, ":count": len(members)}
         )
 
 

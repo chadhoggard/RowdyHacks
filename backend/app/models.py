@@ -38,6 +38,7 @@ class GroupResponse(BaseModel):
     members: List[str]
     createdBy: str
     balance: float
+    memberCount: int
     status: str
     createdAt: str
 
